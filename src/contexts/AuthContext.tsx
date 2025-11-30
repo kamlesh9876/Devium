@@ -113,7 +113,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const timer = setTimeout(() => {
             console.log('AuthProvider - Setting loading to false (timeout)');
             setLoading(false);
-        }, 2000); // Increased timeout to 2 seconds
+        }, 500); // Reduced timeout to 500ms
 
         return () => {
             console.log('AuthProvider - Cleaning up timer');

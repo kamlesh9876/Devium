@@ -102,7 +102,11 @@ export default function Login() {
 
             console.log('Session stored, navigating to dashboard...');
             setLoading(false);
-            navigate('/');
+            
+            // Small delay to ensure AuthContext picks up the stored user
+            setTimeout(() => {
+                navigate('/');
+            }, 100);
         } catch (err: any) {
             console.log('Login error:', err);
             setError('An error occurred during login. Please try again.');
