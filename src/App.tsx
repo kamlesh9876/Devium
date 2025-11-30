@@ -1,0 +1,111 @@
+import React from 'react';
+import { ThemeProvider, CssBaseline, CircularProgress, Box, Typography } from '@mui/material';
+import { createTheme } from '@mui/material/styles';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { rtdb } from './firebase';
+import DashboardLayout from './layouts/DashboardLayout';
+import Login from './pages/Login';
+import AdminDashboard from './pages/dashboards/AdminDashboard';
+import AdminAnalytics from './pages/dashboards/AdminAnalytics';
+import AdminUserAnalytics from './pages/dashboards/AdminUserAnalytics';
+import UserAnalytics from './pages/dashboards/UserAnalytics';
+import ManagerDashboard from './pages/dashboards/ManagerDashboard';
+import DeveloperDashboard from './pages/dashboards/DeveloperDashboard';
+import TesterDashboard from './pages/dashboards/TesterDashboard';
+import SystemHealth from './pages/dashboards/SystemHealth';
+import SecurityAudit from './pages/dashboards/SecurityAudit';
+import UserActivityMonitor from './pages/dashboards/UserActivityMonitor';
+import BulkUserOperations from './pages/dashboards/BulkUserOperations';
+import FeatureFlags from './pages/dashboards/FeatureFlags';
+import ErrorLogs from './pages/dashboards/ErrorLogs';
+import Family from './pages/Team';
+
+const theme = createTheme({
+  palette: {
+    mode: 'dark',
+    primary: { main: '#90caf9' },
+    secondary: { main: '#f48fb1' }
+  }
+});
+
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, loading } = useAuth();
+  console.log('ProtectedRoute - User:', user);
+  console.log('ProtectedRoute - Loading:', loading);
+  
+  if (loading) return (
+    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', flexDirection: 'column' }}>
+      <CircularProgress />
+      <Typography variant="h6" sx={{ mt: 2 }}>Loading...</Typography>
+    </Box>
+  );
+  
+  if (!user) return <Navigate to="/login" />;
+  return <>{children}</>;
+};
+
+
+
+const DashboardRouter = () => {
+  const { role, user } = useAuth();
+  console.log('DashboardRouter - Role:', role);
+  console.log('DashboardRouter - User:', user);
+  
+  switch (role) {
+    case 'admin': return <AdminDashboard />;
+    case 'manager': return <ManagerDashboard />;
+    case 'developer': return <DeveloperDashboard />;
+    case 'tester': return <TesterDashboard />;
+    default: return (
+      <Box sx={{ p: 3 }}>
+        <Typography variant="h5" color="error">Access Denied</Typography>
+        <Typography>Current Role: <strong>{role || 'None'}</strong></Typography>
+        <Typography>User ID: <strong>{user?.uid}</strong></Typography>
+        <Typography variant="body2" sx={{ mt: 2 }}>
+          Please ensure your user ID in Firebase Realtime Database has a "role" field set to one of:
+          admin, manager, developer, tester.
+        </Typography>
+        <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+          Path: users/&#123;uid&#125;/role
+        </Typography>
+        <Typography variant="caption" display="block">
+          Database URL: {rtdb.app.options.databaseURL || 'Default'}
+        </Typography>
+      </Box>
+    );
+  }
+};
+
+function App() {
+  return (
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <AuthProvider>
+        <Router>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
+              <Route index element={<DashboardRouter />} />
+              <Route path="analytics" element={<UserAnalytics />} />
+              <Route path="admin-analytics" element={<AdminAnalytics />} />
+              <Route path="admin-users" element={<AdminUserAnalytics />} />
+              <Route path="system-health" element={<SystemHealth />} />
+              <Route path="security-audit" element={<SecurityAudit />} />
+              <Route path="user-activity" element={<UserActivityMonitor />} />
+              <Route path="bulk-operations" element={<BulkUserOperations />} />
+              <Route path="feature-flags" element={<FeatureFlags />} />
+              <Route path="error-logs" element={<ErrorLogs />} />
+              <Route path="family" element={<Family />} />
+              <Route path="team" element={<Navigate to="/family" replace />} />
+              <Route path="projects" element={<div>Projects Page (Coming Soon)</div>} />
+              <Route path="bugs" element={<div>Bugs Page (Coming Soon)</div>} />
+            </Route>
+          </Routes>
+        </Router>
+      </AuthProvider>
+    </ThemeProvider>
+  );
+}
+
+export default App;
