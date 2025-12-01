@@ -83,7 +83,7 @@ npm run lint     # Run ESLint for code quality
    ```bash
    ipconfig
    ```
-   Look for "IPv4 Address" (e.g., `192.168.7.6`)
+   Look for "IPv4 Address" (e.g., `xxx.xxx.x.x`)
 
 2. **Access from any device on same WiFi:**
    ```
