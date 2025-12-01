@@ -7,6 +7,8 @@ export default defineConfig({
     __HMR_CONFIG_NAME__: JSON.stringify('vite.config.js')
   },
   server: {
+    host: '0.0.0.0', // Allow connections from any IP
+    port: 5173,
     hmr: {
       protocol: 'ws',
       host: 'localhost',

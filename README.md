@@ -76,6 +76,46 @@ npm run preview  # Preview production build
 npm run lint     # Run ESLint for code quality
 ```
 
+## Local Network Access
+
+### Option 1: Access on Same WiFi Network
+1. **Find your local IP address:**
+   ```bash
+   ipconfig
+   ```
+   Look for "IPv4 Address" (e.g., `192.168.7.6`)
+
+2. **Access from any device on same WiFi:**
+   ```
+   http://YOUR_IP_ADDRESS:5173
+   ```
+   Example: `http://192.168.7.6:5173`
+
+3. **Test on mobile devices** connected to your WiFi
+
+### Option 2: Internet Access (Tunneling)
+If you need to access from outside your local network:
+
+```bash
+# Option A: Using localtunnel
+npm install -g localtunnel
+npx localtunnel --port 5173
+
+# Option B: Using tunnelmole
+npm install -g tunnelmole
+npx tunnelmole 5173
+
+# Option C: Using ngrok
+npm install -g ngrok
+ngrok http 5173
+```
+
+### Option 3: Quick Testing
+Test on different browsers on the same computer:
+- Chrome: `http://localhost:5173`
+- Firefox: `http://localhost:5173`
+- Edge: `http://localhost:5173`
+
 ## Firebase Setup
 The project includes several utility scripts for Firebase management:
 - `testFirebase.js` - Test Firebase connection
