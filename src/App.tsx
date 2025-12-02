@@ -3,9 +3,19 @@ import { ThemeProvider, CssBaseline, CircularProgress, Box, Typography } from '@
 import { createTheme } from '@mui/material/styles';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { NotificationProvider } from './contexts/NotificationContext';
+import { ActivityAnalyticsProvider } from './contexts/ActivityAnalyticsContext';
+import { ErrorMonitoringProvider } from './contexts/ErrorMonitoringContext';
+import { CollaborationProvider } from './contexts/CollaborationContext';
+import { DataSyncProvider } from './contexts/DataSyncContext';
+import { SecurityMonitoringProvider } from './contexts/SecurityMonitoringContext';
+import { NotificationCenter, NotificationToast } from './components/Notifications';
+import { LiveCursorOverlay, TypingIndicator, CollaborationPanel } from './components/LiveCursors';
+import { RealTimeUI } from './components/RealTimeUI';
 import { rtdb } from './firebase';
 import DashboardLayout from './layouts/DashboardLayout';
 import Login from './pages/Login';
+import WorkInProgress from './pages/WorkInProgress';
 import AdminDashboard from './pages/dashboards/AdminDashboard';
 import AdminAnalytics from './pages/dashboards/AdminAnalytics';
 import AdminUserAnalytics from './pages/dashboards/AdminUserAnalytics';
@@ -29,10 +39,17 @@ const theme = createTheme({
   }
 });
 
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading } = useAuth();
+interface ProtectedRouteProps {
+  children: React.ReactNode;
+  allowedRoles?: string[];
+}
+
+const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
+  const { user, loading, role } = useAuth();
   console.log('ProtectedRoute - User:', user);
+  console.log('ProtectedRoute - Role:', role);
   console.log('ProtectedRoute - Loading:', loading);
+  console.log('ProtectedRoute - Allowed Roles:', allowedRoles);
   
   if (loading) return (
     <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', flexDirection: 'column' }}>
@@ -42,6 +59,21 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   );
   
   if (!user) return <Navigate to="/login" />;
+  
+  // Check role-based access if allowedRoles is specified
+  if (allowedRoles && role && !allowedRoles.includes(role)) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Typography variant="h5" color="error">Access Denied</Typography>
+        <Typography>Current Role: <strong>{role || 'None'}</strong></Typography>
+        <Typography>Required Roles: <strong>{allowedRoles.join(', ')}</strong></Typography>
+        <Typography variant="body2" sx={{ mt: 2 }}>
+          You don't have permission to access this page.
+        </Typography>
+      </Box>
+    );
+  }
+  
   return <>{children}</>;
 };
 
@@ -54,9 +86,9 @@ const DashboardRouter = () => {
   
   switch (role) {
     case 'admin': return <AdminDashboard />;
-    case 'manager': return <ManagerDashboard />;
-    case 'developer': return <DeveloperDashboard />;
-    case 'tester': return <TesterDashboard />;
+    case 'manager': 
+    case 'developer': 
+    case 'tester': return <WorkInProgress />;
     default: return (
       <Box sx={{ p: 3 }}>
         <Typography variant="h5" color="error">Access Denied</Typography>
@@ -81,29 +113,47 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <AuthProvider>
-        <Router>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
-              <Route index element={<DashboardRouter />} />
-              <Route path="analytics" element={<UserAnalytics />} />
-              <Route path="admin-analytics" element={<AdminAnalytics />} />
-              <Route path="admin-users" element={<AdminUserAnalytics />} />
-              <Route path="system-health" element={<SystemHealth />} />
-              <Route path="security-audit" element={<SecurityAudit />} />
-              <Route path="user-activity" element={<UserActivityMonitor />} />
-              <Route path="bulk-operations" element={<BulkUserOperations />} />
-              <Route path="feature-flags" element={<FeatureFlags />} />
-              <Route path="error-logs" element={<ErrorLogs />} />
-              <Route path="family" element={<Family />} />
-              <Route path="team" element={<Navigate to="/family" replace />} />
-              <Route path="projects" element={<div>Projects Page (Coming Soon)</div>} />
-              <Route path="bugs" element={<div>Bugs Page (Coming Soon)</div>} />
-            </Route>
-          </Routes>
-        </Router>
-      </AuthProvider>
+      <SecurityMonitoringProvider>
+        <DataSyncProvider>
+          <CollaborationProvider>
+            <ErrorMonitoringProvider>
+              <ActivityAnalyticsProvider>
+                <NotificationProvider>
+                  <AuthProvider>
+                    <Router>
+                      <Routes>
+                        <Route path="/login" element={<Login />} />
+                        <Route path="/" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
+                          <Route index element={<DashboardRouter />} />
+                          <Route path="analytics" element={<ProtectedRoute allowedRoles={['manager', 'admin']}><UserAnalytics /></ProtectedRoute>} />
+                          <Route path="admin-analytics" element={<ProtectedRoute allowedRoles={['admin']}><AdminAnalytics /></ProtectedRoute>} />
+                          <Route path="admin-users" element={<ProtectedRoute allowedRoles={['admin']}><AdminUserAnalytics /></ProtectedRoute>} />
+                          <Route path="system-health" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><SystemHealth /></ProtectedRoute>} />
+                          <Route path="security-audit" element={<ProtectedRoute allowedRoles={['admin']}><SecurityAudit /></ProtectedRoute>} />
+                          <Route path="user-activity" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><UserActivityMonitor /></ProtectedRoute>} />
+                          <Route path="bulk-operations" element={<ProtectedRoute allowedRoles={['admin']}><BulkUserOperations /></ProtectedRoute>} />
+                          <Route path="feature-flags" element={<ProtectedRoute allowedRoles={['admin']}><FeatureFlags /></ProtectedRoute>} />
+                          <Route path="error-logs" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><ErrorLogs /></ProtectedRoute>} />
+                          <Route path="wip" element={<WorkInProgress />} />
+                          <Route path="family" element={<Family />} />
+                          <Route path="team" element={<Navigate to="/family" replace />} />
+                          <Route path="projects" element={<div>Projects Page (Coming Soon)</div>} />
+                          <Route path="bugs" element={<div>Bugs Page (Coming Soon)</div>} />
+                        </Route>
+                      </Routes>
+                    </Router>
+                    <NotificationToast />
+                    <LiveCursorOverlay />
+                    <TypingIndicator />
+                    <CollaborationPanel />
+                    <RealTimeUI />
+                  </AuthProvider>
+                </NotificationProvider>
+              </ActivityAnalyticsProvider>
+            </ErrorMonitoringProvider>
+          </CollaborationProvider>
+        </DataSyncProvider>
+      </SecurityMonitoringProvider>
     </ThemeProvider>
   );
 }

@@ -93,12 +93,16 @@ export default function Login() {
             
             // Step 7: Store session and redirect
             console.log('Login successful, storing session...');
-            localStorage.setItem('devium_user', JSON.stringify({
+            const userData = {
                 uid: userId,
                 email: foundUser.email,
                 name: foundUser.name,
                 role: foundUser.role
-            }));
+            };
+            localStorage.setItem('devium_user', JSON.stringify(userData));
+            
+            // Dispatch custom event to notify AuthContext of the change
+            window.dispatchEvent(new CustomEvent('devium_user_updated', { detail: userData }));
 
             console.log('Session stored, navigating to dashboard...');
             setLoading(false);

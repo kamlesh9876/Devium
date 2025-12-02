@@ -13,10 +13,7 @@ import {
     TableHead,
     TableRow,
     Chip,
-    LinearProgress,
     Avatar,
-    IconButton,
-    Tooltip,
     Select,
     MenuItem,
     FormControl,
@@ -38,15 +35,12 @@ import {
     Visibility as ViewIcon,
     Edit as EditIcon,
     Download as DownloadIcon,
-    Login as LoginIcon,
-    Logout as LogoutIcon,
     Create as CreateIcon,
-    Delete as DeleteIcon,
-    Update as UpdateIcon,
-    Search as SearchIcon,
-    FilterList as FilterIcon
+    Search as SearchIcon
 } from '@mui/icons-material';
 import { Line, Bar, Pie } from 'react-chartjs-2';
+import { ref, onValue } from 'firebase/database';
+import { rtdb } from '../../firebase';
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -94,23 +88,45 @@ interface UserSession {
     userId: string;
     userName: string;
     userEmail: string;
+    userRole: string;
     loginTime: string;
     lastActivity: string;
-    duration: number;
-    isActive: boolean;
-    actionsCount: number;
-    pagesViewed: string[];
     ipAddress: string;
+    device: string;
+    status: 'online' | 'offline' | 'away';
+    currentPage: string;
+    duration: string;
+    actionsCount?: number;
+    // Enhanced fields
+    deviceInfo?: {
+        browser?: string;
+        os?: string;
+        platform?: string;
+        language?: string;
+        screenResolution?: string;
+        timezone?: string;
+    };
+    locationInfo?: {
+        ip?: string;
+        country?: string;
+        city?: string;
+        timezone?: string;
+    };
+    currentActivity?: string;
+    isActive?: boolean;
+    sessionId?: string;
+    lastHeartbeat?: string;
 }
 
 interface ActivityStats {
     totalUsers: number;
     activeUsers: number;
-    totalActions: number;
-    avgSessionDuration: number;
-    topPages: Array<{ page: string; views: number }>;
-    actionBreakdown: Array<{ action: string; count: number }>;
-    hourlyActivity: Array<{ hour: number; actions: number }>;
+    pageViews: number;
+    avgSessionDuration: string;
+    hourlyActivity?: Array<{ hour: number; actions: number }>;
+    actionBreakdown?: Array<{ action: string; actions: number }>;
+    topPages?: Array<{ page: string; views: number }>;
+    totalActions?: number;
 }
 
 const UserActivityMonitor: React.FC = () => {
@@ -120,163 +136,144 @@ const UserActivityMonitor: React.FC = () => {
     const [stats, setStats] = useState<ActivityStats>({
         totalUsers: 0,
         activeUsers: 0,
-        totalActions: 0,
-        avgSessionDuration: 0,
-        topPages: [],
-        actionBreakdown: [],
-        hourlyActivity: []
+        pageViews: 0,
+        avgSessionDuration: '0m'
     });
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [userFilter, setUserFilter] = useState('all');
 
     useEffect(() => {
-        // Generate sample user activity data
-        const sampleActivities: UserActivity[] = [
-            {
-                id: '1',
-                userId: 'user1',
-                userName: 'John Doe',
-                userEmail: 'john@example.com',
-                action: 'PAGE_VIEW',
-                resource: '/dashboard',
-                details: 'Viewed admin dashboard',
-                timestamp: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
-                sessionId: 'session1',
-                ipAddress: '192.168.1.100',
-                userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-                duration: 45000
-            },
-            {
-                id: '2',
-                userId: 'user1',
-                userName: 'John Doe',
-                userEmail: 'john@example.com',
-                action: 'PROJECT_EDIT',
-                resource: '/projects/123',
-                details: 'Edited project "Website Redesign"',
-                timestamp: new Date(Date.now() - 1000 * 60 * 10).toISOString(),
-                sessionId: 'session1',
-                ipAddress: '192.168.1.100',
-                userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-                duration: 120000
-            },
-            {
-                id: '3',
-                userId: 'user2',
-                userName: 'Jane Smith',
-                userEmail: 'jane@example.com',
-                action: 'USER_CREATE',
-                resource: '/users',
-                details: 'Created new user "mike@example.com"',
-                timestamp: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
-                sessionId: 'session2',
-                ipAddress: '192.168.1.101',
-                userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
-                duration: 30000
-            },
-            {
-                id: '4',
-                userId: 'user3',
-                userName: 'Mike Johnson',
-                userEmail: 'mike@example.com',
-                action: 'FILE_UPLOAD',
-                resource: '/projects/456/files',
-                details: 'Uploaded file "design.pdf"',
-                timestamp: new Date(Date.now() - 1000 * 60 * 20).toISOString(),
-                sessionId: 'session3',
-                ipAddress: '192.168.1.102',
-                userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-                duration: 60000
-            },
-            {
-                id: '5',
-                userId: 'user1',
-                userName: 'John Doe',
-                userEmail: 'john@example.com',
-                action: 'DATA_EXPORT',
-                resource: '/analytics/export',
-                details: 'Exported user analytics (CSV)',
-                timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-                sessionId: 'session1',
-                ipAddress: '192.168.1.100',
-                userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-                duration: 90000
-            }
-        ];
-
-        const sampleSessions: UserSession[] = [
-            {
-                id: 'session1',
-                userId: 'user1',
-                userName: 'John Doe',
-                userEmail: 'john@example.com',
-                loginTime: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
-                lastActivity: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
-                duration: 55 * 60 * 1000, // 55 minutes
-                isActive: true,
-                actionsCount: 15,
-                pagesViewed: ['/dashboard', '/projects', '/projects/123', '/analytics'],
-                ipAddress: '192.168.1.100'
-            },
-            {
-                id: 'session2',
-                userId: 'user2',
-                userName: 'Jane Smith',
-                userEmail: 'jane@example.com',
-                loginTime: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-                lastActivity: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
-                duration: 15 * 60 * 1000, // 15 minutes
-                isActive: false,
-                actionsCount: 8,
-                pagesViewed: ['/dashboard', '/users', '/teams'],
-                ipAddress: '192.168.1.101'
-            },
-            {
-                id: 'session3',
-                userId: 'user3',
-                userName: 'Mike Johnson',
-                userEmail: 'mike@example.com',
-                loginTime: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
-                lastActivity: new Date(Date.now() - 1000 * 60 * 20).toISOString(),
-                duration: 25 * 60 * 1000, // 25 minutes
-                isActive: false,
-                actionsCount: 12,
-                pagesViewed: ['/dashboard', '/projects', '/projects/456'],
-                ipAddress: '192.168.1.102'
-            }
-        ];
-
-        const sampleStats: ActivityStats = {
-            totalUsers: 3,
-            activeUsers: 1,
-            totalActions: 35,
-            avgSessionDuration: 31.7 * 60 * 1000, // 31.7 minutes
-            topPages: [
-                { page: '/dashboard', views: 45 },
-                { page: '/projects', views: 28 },
-                { page: '/users', views: 15 },
-                { page: '/analytics', views: 12 },
-                { page: '/teams', views: 8 }
-            ],
-            actionBreakdown: [
-                { action: 'PAGE_VIEW', count: 25 },
-                { action: 'PROJECT_EDIT', count: 8 },
-                { action: 'USER_CREATE', count: 3 },
-                { action: 'FILE_UPLOAD', count: 2 },
-                { action: 'DATA_EXPORT', count: 1 }
-            ],
-            hourlyActivity: Array.from({ length: 24 }, (_, i) => ({
-                hour: i,
-                actions: Math.floor(Math.random() * 20) + (i >= 9 && i <= 17 ? 10 : 0)
-            }))
-        };
-
-        setActivities(sampleActivities);
-        setSessions(sampleSessions);
-        setStats(sampleStats);
+        setLoading(true);
+        
+        // Initialize with empty data - real data will come from Firebase
+        setStats({
+            totalUsers: 0,
+            activeUsers: 0,
+            pageViews: 0,
+            avgSessionDuration: '0m'
+        });
+        setActivities([]);
+        setSessions([]);
         setLoading(false);
     }, []);
+
+    // Simple real-time presence tracking
+    useEffect(() => {
+        console.log('Setting up SIMPLE presence monitoring...');
+        
+        // Test Firebase connection first
+        const testRef = ref(rtdb, '.info/connected');
+        const testUnsub = onValue(testRef, (snap) => {
+            console.log('Firebase connected:', snap.val());
+        });
+        
+        const sessionsRef = ref(rtdb, 'sessions');
+        const unsubscribe = onValue(sessionsRef, (snapshot) => {
+            const data = snapshot.val();
+            console.log('=== SESSIONS UPDATE ===');
+            console.log('Raw data:', data);
+            console.log('Data type:', typeof data);
+            
+            const onlineUsers: UserSession[] = [];
+            
+            if (data) {
+                console.log('Processing sessions...');
+                Object.keys(data).forEach(uid => {
+                    const session = data[uid];
+                    console.log(`Session ${uid}:`, session);
+                    
+                    // Check if user is online - either status is 'online' or status is missing (assume online)
+                    const isOnline = session.status === 'online' || !session.status;
+                    
+                    if (isOnline) {
+                        console.log('User is ONLINE, adding to list');
+                        onlineUsers.push({
+                            id: uid,
+                            userId: uid,
+                            userName: session.name || 'Unknown User',
+                            userEmail: session.email || 'unknown@example.com',
+                            userRole: session.role || 'unknown',
+                            loginTime: session.connectedAt || new Date().toISOString(),
+                            lastActivity: session.lastSeen || new Date().toISOString(),
+                            ipAddress: session.location?.ip || 'N/A',
+                            device: session.device?.browser ? `${session.device.browser} on ${session.device.os}` : 'Unknown Device',
+                            status: 'online',
+                            currentPage: session.currentPage || '/dashboard',
+                            duration: calculateDuration(session.connectedAt),
+                            // Enhanced fields
+                            deviceInfo: session.device || {},
+                            locationInfo: session.location || {},
+                            currentActivity: session.currentActivity || 'active',
+                            isActive: session.isActive !== false,
+                            sessionId: session.sessionId || 'unknown',
+                            lastHeartbeat: session.lastHeartbeat || session.lastSeen
+                        });
+                    } else {
+                        console.log(`User ${uid} is not online (status: ${session?.status})`);
+                    }
+                });
+            } else {
+                console.log('No sessions data found');
+            }
+            
+            console.log('=== FINAL RESULT ===');
+            console.log('Online users count:', onlineUsers.length);
+            console.log('Online users:', onlineUsers);
+            
+            setSessions(onlineUsers);
+            setStats(prev => ({
+                ...prev,
+                activeUsers: onlineUsers.length,
+                totalUsers: Math.max(prev.totalUsers, onlineUsers.length),
+                avgSessionDuration: calculateAverageDuration(onlineUsers)
+            }));
+        });
+        
+        return () => {
+            testUnsub();
+            unsubscribe();
+        };
+    }, []);
+
+    // Helper function to calculate session duration
+    const calculateDuration = (connectedAt: string) => {
+        const now = new Date();
+        const connected = new Date(connectedAt);
+        const diffMs = now.getTime() - connected.getTime();
+        const diffMins = Math.floor(diffMs / 60000);
+        
+        if (diffMins < 60) {
+            return `${diffMins}m`;
+        } else {
+            const hours = Math.floor(diffMins / 60);
+            const mins = diffMins % 60;
+            return `${hours}h ${mins}m`;
+        }
+    };
+
+    // Helper function to calculate average session duration
+    const calculateAverageDuration = (sessions: UserSession[]) => {
+        if (sessions.length === 0) return '0m';
+        
+        const totalMinutes = sessions.reduce((total, session) => {
+            const now = new Date();
+            const connected = new Date(session.loginTime);
+            const diffMs = now.getTime() - connected.getTime();
+            const diffMins = Math.floor(diffMs / 60000);
+            return total + diffMins;
+        }, 0);
+        
+        const avgMins = Math.floor(totalMinutes / sessions.length);
+        
+        if (avgMins < 60) {
+            return `${avgMins}m`;
+        } else {
+            const hours = Math.floor(avgMins / 60);
+            const mins = avgMins % 60;
+            return `${hours}h ${mins}m`;
+        }
+    };
 
     const getActionIcon = (action: string) => {
         switch (action) {
@@ -306,17 +303,21 @@ const UserActivityMonitor: React.FC = () => {
         return `${minutes}m ${seconds}s`;
     };
 
+    const formatDurationString = (durationStr: string) => {
+        return durationStr; // Already formatted as string
+    };
+
     const formatTimestamp = (timestamp: string) => {
         return new Date(timestamp).toLocaleString();
     };
 
     // Chart data
     const hourlyActivityData = {
-        labels: stats.hourlyActivity.map(h => `${h.hour}:00`),
+        labels: (stats.hourlyActivity || []).map(h => `${h.hour}:00`),
         datasets: [
             {
                 label: 'User Activity',
-                data: stats.hourlyActivity.map(h => h.actions),
+                data: (stats.hourlyActivity || []).map(h => h.actions),
                 borderColor: 'rgb(75, 192, 192)',
                 backgroundColor: 'rgba(75, 192, 192, 0.2)',
                 tension: 0.4,
@@ -326,10 +327,10 @@ const UserActivityMonitor: React.FC = () => {
     };
 
     const actionBreakdownData = {
-        labels: stats.actionBreakdown.map(a => a.action.replace('_', ' ')),
+        labels: (stats.actionBreakdown || []).map(a => a.action.replace('_', ' ')),
         datasets: [
             {
-                data: stats.actionBreakdown.map(a => a.count),
+                data: (stats.actionBreakdown || []).map(a => a.actions),
                 backgroundColor: [
                     'rgba(255, 99, 132, 0.8)',
                     'rgba(54, 162, 235, 0.8)',
@@ -342,11 +343,11 @@ const UserActivityMonitor: React.FC = () => {
     };
 
     const topPagesData = {
-        labels: stats.topPages.map(p => p.page),
+        labels: (stats.topPages || []).map(p => p.page),
         datasets: [
             {
                 label: 'Page Views',
-                data: stats.topPages.map(p => p.views),
+                data: (stats.topPages || []).map(p => p.views),
                 backgroundColor: 'rgba(54, 162, 235, 0.8)',
                 borderColor: 'rgba(54, 162, 235, 1)',
                 borderWidth: 1
@@ -384,6 +385,16 @@ const UserActivityMonitor: React.FC = () => {
             <Typography variant="h4" gutterBottom>
                 User Activity Monitor
             </Typography>
+            
+            {/* Debug indicator */}
+            <Box sx={{ mb: 2, p: 2, bgcolor: 'warning.main', color: 'white', borderRadius: 1 }}>
+                <Typography variant="body2">
+                    🐛 DEBUG: Component is loaded! Check console for Firebase debug messages.
+                </Typography>
+                <Typography variant="body2">
+                    Current online users: {sessions.length}
+                </Typography>
+            </Box>
 
             {/* Statistics Cards */}
             <Grid container spacing={3} sx={{ mb: 3 }}>
@@ -434,7 +445,7 @@ const UserActivityMonitor: React.FC = () => {
                                 <Typography variant="h6">Avg Session</Typography>
                             </Box>
                             <Typography variant="h4" color="warning">
-                                {formatDuration(stats.avgSessionDuration)}
+                                {formatDurationString(stats.avgSessionDuration)}
                             </Typography>
                         </CardContent>
                     </Card>
@@ -482,7 +493,7 @@ const UserActivityMonitor: React.FC = () => {
             <Paper sx={{ mb: 3 }}>
                 <Tabs
                     value={activeTab}
-                    onChange={(e, newValue) => setActiveTab(newValue)}
+                    onChange={(_, newValue) => setActiveTab(newValue)}
                     variant="scrollable"
                     scrollButtons="auto"
                 >
@@ -534,10 +545,12 @@ const UserActivityMonitor: React.FC = () => {
                                     <TableRow>
                                         <TableCell>Timestamp</TableCell>
                                         <TableCell>User</TableCell>
-                                        <TableCell>Action</TableCell>
-                                        <TableCell>Resource</TableCell>
-                                        <TableCell>Details</TableCell>
-                                        <TableCell>Duration</TableCell>
+                                        <TableCell>Device</TableCell>
+                                        <TableCell>Location</TableCell>
+                                        <TableCell>Activity</TableCell>
+                                        <TableCell>Session Time</TableCell>
+                                        <TableCell>Status</TableCell>
+                                        <TableCell>Actions</TableCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
@@ -632,7 +645,7 @@ const UserActivityMonitor: React.FC = () => {
                                                         Last Activity: {formatTimestamp(session.lastActivity)}
                                                     </Typography>
                                                     <Typography variant="caption" color="text.secondary" display="block">
-                                                        Duration: {formatDuration(session.duration)} • Actions: {session.actionsCount}
+                                                        Duration: {formatDurationString(session.duration)} • Actions: {session.actionsCount}
                                                     </Typography>
                                                     <Typography variant="caption" color="text.secondary" display="block">
                                                         IP: {session.ipAddress}

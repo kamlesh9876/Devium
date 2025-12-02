@@ -112,11 +112,13 @@ export default function UserAnalytics() {
     // Fetch users and sessions
     const fetchUsers = async () => {
       try {
+        console.log('Fetching users from Firebase...');
         const usersRef = ref(rtdb, 'users');
         const usersSnapshot = await get(usersRef);
         
         if (usersSnapshot.exists()) {
           const usersData = usersSnapshot.val();
+          console.log('Users data:', usersData);
           const usersList = Object.entries(usersData).map(([uid, data]: [string, any]) => ({
             uid,
             ...data
@@ -124,17 +126,37 @@ export default function UserAnalytics() {
           setUsers(usersList);
         }
 
-        const sessionsRef = ref(rtdb, 'sessions');
+        // Try to fetch sessions from multiple possible paths
+        console.log('Fetching sessions from Firebase...');
+        const sessionsRef = ref(rtdb, 'userSessions');
         const sessionsSnapshot = await get(sessionsRef);
         
         if (sessionsSnapshot.exists()) {
           const sessionsData = sessionsSnapshot.val();
+          console.log('Sessions data from userSessions:', sessionsData);
           const sessionsList = Object.entries(sessionsData).map(([uid, data]: [string, any]) => ({
             uid,
             ...data,
             userAgent: data.userAgent || 'Unknown'
           }));
           setSessions(sessionsList);
+        } else {
+          // Try alternative path
+          const altSessionsRef = ref(rtdb, 'sessions');
+          const altSessionsSnapshot = await get(altSessionsRef);
+          
+          if (altSessionsSnapshot.exists()) {
+            const sessionsData = altSessionsSnapshot.val();
+            console.log('Sessions data from sessions:', sessionsData);
+            const sessionsList = Object.entries(sessionsData).map(([uid, data]: [string, any]) => ({
+              uid,
+              ...data,
+              userAgent: data.userAgent || 'Unknown'
+            }));
+            setSessions(sessionsList);
+          } else {
+            console.log('No session data found in either userSessions or sessions path');
+          }
         }
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -145,13 +167,15 @@ export default function UserAnalytics() {
 
     fetchUsers();
 
-    // Set up real-time listeners
+    // Set up real-time listeners for both possible paths
     const usersRef = ref(rtdb, 'users');
-    const sessionsRef = ref(rtdb, 'sessions');
+    const sessionsRef = ref(rtdb, 'userSessions');
+    const altSessionsRef = ref(rtdb, 'sessions');
 
     const unsubscribeUsers = onValue(usersRef, (snapshot) => {
       if (snapshot.exists()) {
         const usersData = snapshot.val();
+        console.log('Real-time users data:', usersData);
         const usersList = Object.entries(usersData).map(([uid, data]: [string, any]) => ({
           uid,
           ...data
@@ -163,6 +187,20 @@ export default function UserAnalytics() {
     const unsubscribeSessions = onValue(sessionsRef, (snapshot) => {
       if (snapshot.exists()) {
         const sessionsData = snapshot.val();
+        console.log('Real-time sessions data from userSessions:', sessionsData);
+        const sessionsList = Object.entries(sessionsData).map(([uid, data]: [string, any]) => ({
+          uid,
+          ...data,
+          userAgent: data.userAgent || 'Unknown'
+        }));
+        setSessions(sessionsList);
+      }
+    });
+
+    const unsubscribeAltSessions = onValue(altSessionsRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const sessionsData = snapshot.val();
+        console.log('Real-time sessions data from sessions:', sessionsData);
         const sessionsList = Object.entries(sessionsData).map(([uid, data]: [string, any]) => ({
           uid,
           ...data,
@@ -175,12 +213,66 @@ export default function UserAnalytics() {
     return () => {
       unsubscribeUsers();
       unsubscribeSessions();
+      unsubscribeAltSessions();
     };
   }, []);
 
-  const onlineUsers = sessions.filter(s => s.status === 'online');
-  const offlineUsers = sessions.filter(s => s.status === 'offline');
-  const totalUsers = users.length;
+  // Add mock data for testing if no real data exists
+  const mockSessions: Session[] = [
+    {
+      uid: 'test1',
+      email: 'test1@example.com',
+      name: 'Test User 1',
+      role: 'developer',
+      status: 'online',
+      device: 'Chrome',
+      lastSeen: new Date(),
+      connectedAt: new Date(),
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    },
+    {
+      uid: 'test2', 
+      email: 'test2@example.com',
+      name: 'Test User 2',
+      role: 'manager',
+      status: 'offline',
+      device: 'Firefox',
+      lastSeen: new Date(),
+      connectedAt: new Date(),
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0'
+    },
+    {
+      uid: 'test3',
+      email: 'test3@example.com',
+      name: 'Test User 3',
+      role: 'admin',
+      status: 'online',
+      device: 'Safari',
+      lastSeen: new Date(),
+      connectedAt: new Date(),
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15'
+    }
+  ];
+
+  // Always use real sessions data, no fallback to mock for production
+  const displaySessions = sessions;
+
+  console.log('=== DEVICE ANALYTICS DEBUG ===');
+  console.log('Real sessions from Firebase:', sessions);
+  console.log('Number of sessions:', sessions.length);
+  console.log('Session data sample:', sessions.slice(0, 2));
+  
+  // Check if sessions have userAgent data
+  const sessionsWithUserAgent = sessions.filter(s => s.userAgent);
+  console.log('Sessions with userAgent:', sessionsWithUserAgent.length);
+  
+  if (sessionsWithUserAgent.length > 0) {
+    console.log('Sample userAgent:', sessionsWithUserAgent[0].userAgent);
+  }
+
+  const onlineUsers = displaySessions.filter(s => s.status === 'online');
+  const offlineUsers = displaySessions.filter(s => s.status === 'offline');
+  const totalUsers = users.length > 0 ? users.length : displaySessions.length;
 
   // Analytics data
   const roleDistribution = [
@@ -203,7 +295,7 @@ export default function UserAnalytics() {
   const deviceData = [
     { 
       device: 'Chrome', 
-      count: sessions.filter(s => 
+      count: displaySessions.filter(s => 
         s.userAgent && 
         s.userAgent.includes('Chrome') && 
         !s.userAgent.includes('Edg') && 
@@ -212,14 +304,14 @@ export default function UserAnalytics() {
     },
     { 
       device: 'Firefox', 
-      count: sessions.filter(s => 
+      count: displaySessions.filter(s => 
         s.userAgent && 
         s.userAgent.includes('Firefox')
       ).length 
     },
     { 
       device: 'Safari', 
-      count: sessions.filter(s => 
+      count: displaySessions.filter(s => 
         s.userAgent && 
         s.userAgent.includes('Safari') && 
         !s.userAgent.includes('Chrome') && 
@@ -230,12 +322,29 @@ export default function UserAnalytics() {
     },
     { 
       device: 'Edge', 
-      count: sessions.filter(s => 
+      count: displaySessions.filter(s => 
         s.userAgent && 
         (s.userAgent.includes('Edg') || s.userAgent.includes('Edge'))
       ).length 
+    },
+    {
+      device: 'Unknown/Other',
+      count: displaySessions.filter(s => !s.userAgent || (
+        !s.userAgent.includes('Chrome') && 
+        !s.userAgent.includes('Firefox') && 
+        !s.userAgent.includes('Safari') && 
+        !s.userAgent.includes('Edg') && 
+        !s.userAgent.includes('Edge')
+      )).length
     }
   ];
+
+  console.log('Device data calculated:', deviceData);
+  console.log('Chrome count:', deviceData[0].count);
+  console.log('Firefox count:', deviceData[1].count);
+  console.log('Safari count:', deviceData[2].count);
+  console.log('Edge count:', deviceData[3].count);
+  console.log('Unknown count:', deviceData[4].count);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
@@ -250,7 +359,27 @@ export default function UserAnalytics() {
     }
   };
 
-  const formatLastSeen = (lastSeen: any) => {
+  const getRoleColor = (role: string) => {
+    switch (role) {
+      case 'admin': return '#8884d8';
+      case 'manager': return '#82ca9d';
+      case 'developer': return '#ffc658';
+      case 'tester': return '#ff7300';
+      default: return '#9e9e9e';
+    }
+  };
+
+  const getDeviceDisplay = (device: any): string => {
+    if (typeof device === 'string') {
+      return device;
+    }
+    if (typeof device === 'object' && device !== null) {
+      return device.browser || device.device || JSON.stringify(device);
+    }
+    return 'Unknown';
+  };
+
+  const formatLastSeen = (lastSeen: any): string => {
     if (!lastSeen) return 'Never';
     const date = lastSeen.toDate ? lastSeen.toDate() : new Date(lastSeen);
     return date.toLocaleString();
@@ -367,12 +496,13 @@ export default function UserAnalytics() {
       <TabPanel value={tabValue} index={0}>
         <Grid container spacing={3}>
           {/* User Status Cards */}
-          {users.map((user) => {
-            const session = sessions.find(s => s.uid === user.uid);
+          {(users.length > 0 ? users : displaySessions).map((userOrSession) => {
+            const session = displaySessions.find(s => s.uid === userOrSession.uid);
             const isOnline = session?.status === 'online';
+            const user = users.find(u => u.uid === userOrSession.uid) || userOrSession;
             
             return (
-              <Grid item xs={12} sm={6} md={4} lg={3} key={user.uid}>
+              <Grid item xs={12} sm={6} md={4} lg={3} key={userOrSession.uid}>
                 <Card sx={{ 
                   height: '100%',
                   border: isOnline ? '2px solid #4caf50' : '1px solid #e0e0e0',
@@ -390,28 +520,25 @@ export default function UserAnalytics() {
                         <Typography variant="h6" noWrap>
                           {user.name}
                         </Typography>
-                        <Typography variant="body2" color="textSecondary" noWrap>
+                        <Typography variant="body2" color="textSecondary">
                           {user.email}
                         </Typography>
                       </Box>
-                      <Chip
-                        icon={isOnline ? <Wifi /> : <WifiOff />}
-                        label={isOnline ? 'Online' : 'Offline'}
-                        color={isOnline ? 'success' : 'default'}
+                      <Chip 
+                        label={user.role}
                         size="small"
+                        sx={{ 
+                          bgcolor: getRoleColor(user.role),
+                          color: 'white',
+                          ml: 'auto'
+                        }}
                       />
-                    </Box>
-                    
-                    <Box mb={1}>
-                      <Typography variant="body2" color="textSecondary">
-                        Role: <Chip label={user.role} size="small" variant="outlined" />
-                      </Typography>
                     </Box>
                     
                     {session && (
                       <Box>
                         <Typography variant="body2" color="textSecondary">
-                          Device: {session.device}
+                          Device: {getDeviceDisplay(session.device)}
                         </Typography>
                         <Typography variant="body2" color="textSecondary">
                           Last Seen: {formatLastSeen(session.lastSeen)}
@@ -489,15 +616,55 @@ export default function UserAnalytics() {
               <Typography variant="h6" gutterBottom>
                 Device Usage
               </Typography>
-              <ResponsiveContainer width="100%" height={300}>
-                <RechartsBarChart data={deviceData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="device" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="count" fill="#8884d8" />
-                </RechartsBarChart>
-              </ResponsiveContainer>
+              {console.log('Device Analytics Tab - deviceData:', deviceData)}
+              {console.log('Device Analytics Tab - displaySessions:', displaySessions)}
+              
+              {/* Simple text display for debugging */}
+              <Box sx={{ mb: 2, p: 2, bgcolor: 'background.paper', border: '1px solid #ccc', borderRadius: 1 }}>
+                <Typography variant="h6" gutterBottom>Device Data (Debug)</Typography>
+                {deviceData.map((device) => (
+                  <Typography key={device.device} variant="body2">
+                    {device.device}: {device.count} users
+                  </Typography>
+                ))}
+              </Box>
+              
+              {deviceData.length > 0 ? (
+                <Box sx={{ height: 300, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+                  {/* Simple bar chart using MUI components */}
+                  <Box sx={{ display: 'flex', alignItems: 'flex-end', height: 250, gap: 2, px: 2 }}>
+                    {deviceData.map((device) => (
+                      <Box key={device.device} sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                        <Box 
+                          sx={{ 
+                            width: '100%', 
+                            height: `${(device.count / Math.max(...deviceData.map(d => d.count))) * 200}px`,
+                            bgcolor: '#8884d8',
+                            borderRadius: 1,
+                            display: 'flex',
+                            alignItems: 'flex-end',
+                            justifyContent: 'center',
+                            pb: 1
+                          }}
+                        >
+                          <Typography variant="caption" sx={{ color: 'white', fontWeight: 'bold' }}>
+                            {device.count}
+                          </Typography>
+                        </Box>
+                        <Typography variant="body2" sx={{ mt: 1, textAlign: 'center' }}>
+                          {device.device}
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Box>
+                </Box>
+              ) : (
+                <Box sx={{ p: 2, textAlign: 'center' }}>
+                  <Typography variant="body2" color="textSecondary">
+                    No device data available
+                  </Typography>
+                </Box>
+              )}
             </Paper>
           </Grid>
           
@@ -509,11 +676,11 @@ export default function UserAnalytics() {
               {deviceData.map((device) => (
                 <Box key={device.device} mb={2}>
                   <Typography variant="body2" color="textSecondary">
-                    {device.device}
+                    {device.device}: {device.count} users
                   </Typography>
                   <LinearProgress 
                     variant="determinate" 
-                    value={(device.count / sessions.length) * 100} 
+                    value={displaySessions.length > 0 ? (device.count / displaySessions.length) * 100 : 0} 
                     sx={{ mt: 1 }}
                   />
                   <Typography variant="caption">

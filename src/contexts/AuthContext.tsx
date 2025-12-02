@@ -1,6 +1,12 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { ref, set, onValue, onDisconnect, serverTimestamp } from 'firebase/database';
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
+import { ref, set, onValue, onDisconnect, serverTimestamp, push, update } from 'firebase/database';
 import { rtdb } from '../firebase';
+import { useNotifications } from './NotificationContext';
+
+// Generate unique session ID
+const generateSessionId = () => {
+    return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+};
 
 interface User {
     uid: string;
@@ -29,6 +35,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [user, setUser] = useState<User | null>(null);
     const [role, setRole] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
+    const { addNotification, sendSystemNotification } = useNotifications();
 
     // Helper function to get device info
     const getDeviceInfo = () => {
@@ -52,140 +59,296 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     useEffect(() => {
         console.log('AuthProvider - Initializing...');
         
-        // Check localStorage for session
-        const storedUser = localStorage.getItem('devium_user');
-        console.log('AuthProvider - Stored user found:', !!storedUser);
+        // Function to check and update user from localStorage
+        const checkAndUpdateUser = () => {
+            const storedUser = localStorage.getItem('devium_user');
+            console.log('AuthProvider - Checking stored user:', !!storedUser);
 
-        if (storedUser) {
-            try {
-                const userData = JSON.parse(storedUser);
-                console.log('AuthProvider - Parsed user data:', userData);
-                setUser(userData);
-                setRole(userData.role);
-                setLoading(false); // Set loading to false immediately when user is found
-
-                // Temporarily disable real-time updates to prevent database interference
-                /*
-                // Listen for real-time updates to user data
-                const userRef = ref(rtdb, `users/${userData.uid}`);
-                const unsubscribe = onValue(userRef, (snapshot) => {
-                    console.log('AuthProvider - Realtime update received');
-                    if (snapshot.exists()) {
-                        const data = snapshot.val();
-                        console.log('AuthProvider - Database data:', data);
-                        const updatedUser = {
-                            uid: userData.uid,
-                            email: data.email || userData.email,
-                            name: data.name || userData.name,
-                            role: data.role || userData.role
-                        };
-                        console.log('AuthProvider - Updated user:', updatedUser);
-                        setUser(updatedUser);
-                        setRole(updatedUser.role);
-                    } else {
-                        console.log('AuthProvider - No database data found, keeping localStorage data');
-                        // Keep the localStorage data if database doesn't have the user
-                        setUser(userData);
-                        setRole(userData.role);
-                    }
-                });
-
-                return () => {
-                    console.log('AuthProvider - Cleaning up listener');
-                    unsubscribe();
-                };
-                */
-
-                return () => {
-                    console.log('AuthProvider - Cleanup completed');
-                };
-            } catch (error) {
-                console.error('AuthProvider - Error parsing stored user data:', error);
-                localStorage.removeItem('devium_user');
-                setLoading(false); // Set loading to false on error too
+            if (storedUser) {
+                try {
+                    const userData = JSON.parse(storedUser);
+                    console.log('AuthProvider - Parsed user data:', userData);
+                    setUser(userData);
+                    setRole(userData.role);
+                    setLoading(false);
+                } catch (error) {
+                    console.error('AuthProvider - Error parsing stored user data:', error);
+                    localStorage.removeItem('devium_user');
+                    setUser(null);
+                    setRole(null);
+                    setLoading(false);
+                }
+            } else {
+                setUser(null);
+                setRole(null);
+                setLoading(false);
             }
-        } else {
-            // No stored user, set loading to false immediately
-            setLoading(false);
-        }
+        };
+
+        // Initial check
+        checkAndUpdateUser();
+
+        // Listen for storage events (when user logs in from another tab or window)
+        const handleStorageChange = (e: StorageEvent) => {
+            if (e.key === 'devium_user') {
+                console.log('AuthProvider - Storage change detected');
+                checkAndUpdateUser();
+            }
+        };
+
+        // Also listen for custom storage events (same tab updates)
+        const handleCustomStorageChange = () => {
+            console.log('AuthProvider - Custom storage change detected');
+            checkAndUpdateUser();
+        };
+
+        window.addEventListener('storage', handleStorageChange);
+        window.addEventListener('devium_user_updated', handleCustomStorageChange);
 
         // Set loading to false after a short delay to prevent infinite loading
         const timer = setTimeout(() => {
             console.log('AuthProvider - Setting loading to false (timeout)');
             setLoading(false);
-        }, 500); // Reduced timeout to 500ms
+        }, 500);
 
         return () => {
-            console.log('AuthProvider - Cleaning up timer');
+            console.log('AuthProvider - Cleaning up');
+            window.removeEventListener('storage', handleStorageChange);
+            window.removeEventListener('devium_user_updated', handleCustomStorageChange);
             clearTimeout(timer);
         };
     }, []);
 
     useEffect(() => {
-        // Set up real-time presence tracking for authenticated user
+        // Enhanced real-time presence tracking
         if (!user?.uid || !user?.email) {
             console.log('No valid user, skipping presence tracking');
             return;
         }
 
-        console.log('Setting up presence tracking for user:', user.uid);
+        console.log('Setting up ENHANCED presence tracking for user:', user.uid);
 
-        // Create a reference to this user's session
+        // Create references
         const sessionRef = ref(rtdb, `sessions/${user.uid}`);
         const userStatusRef = ref(rtdb, `users/${user.uid}/status`);
-        const connectedRef = ref(rtdb, '.info/connected');
+        const activityRef = ref(rtdb, `activities/${user.uid}`);
         
-        const unsubscribe = onValue(connectedRef, (snapshot) => {
-            if (!snapshot.val()) return;
+        // Enhanced device and browser information
+        const getDeviceInfo = () => {
+            const ua = navigator.userAgent;
+            const platform = navigator.platform;
+            const language = navigator.language;
             
-            console.log('User is connected, setting up presence');
+            let browser = 'Unknown';
+            let os = 'Unknown';
             
-            // Set user as online when connected
-            const sessionData = {
-                uid: user.uid,
-                email: user.email,
-                name: user.name,
-                role: user.role,
-                status: 'online',
-                device: getDeviceInfo(),
-                lastSeen: serverTimestamp(),
-                connectedAt: serverTimestamp(),
-                userAgent: navigator.userAgent
+            if (ua.includes('Chrome')) browser = 'Chrome';
+            else if (ua.includes('Firefox')) browser = 'Firefox';
+            else if (ua.includes('Safari')) browser = 'Safari';
+            else if (ua.includes('Edge')) browser = 'Edge';
+            
+            if (platform.includes('Win')) os = 'Windows';
+            else if (platform.includes('Mac')) os = 'macOS';
+            else if (platform.includes('Linux')) os = 'Linux';
+            else if (platform.includes('iPhone')) os = 'iOS';
+            else if (platform.includes('Android')) os = 'Android';
+            
+            return {
+                browser,
+                os,
+                platform,
+                language,
+                screenResolution: `${screen.width}x${screen.height}`,
+                colorDepth: screen.colorDepth,
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                userAgent: ua
             };
-            
-            // Set the session data
-            set(sessionRef, sessionData);
-            
-            // Update user status to online
-            set(userStatusRef, 'online');
-            
-            // Set up disconnect handler - when user disconnects, mark as offline
-            onDisconnect(sessionRef).update({
-                status: 'offline',
-                lastSeen: serverTimestamp(),
-                disconnectedAt: serverTimestamp()
-            });
-            
-            onDisconnect(userStatusRef).set('offline');
-        });
+        };
 
-        return () => {
-            console.log('Cleaning up presence tracking');
-            unsubscribe();
-            
-            // When component unmounts, set user as offline
-            if (user?.uid && user?.email) {
-                set(sessionRef, {
-                    status: 'offline',
+        // Get user location (approximate)
+        const getUserLocation = () => {
+            return {
+                ip: 'Unknown', // Would need backend API for this
+                country: 'Unknown',
+                city: 'Unknown',
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+            };
+        };
+
+        // Enhanced session data
+        const sessionData = {
+            uid: user.uid,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+            status: 'online',
+            lastSeen: serverTimestamp(),
+            connectedAt: serverTimestamp(),
+            device: getDeviceInfo(),
+            location: getUserLocation(),
+            currentActivity: 'active',
+            currentPage: window.location.pathname,
+            sessionId: generateSessionId(),
+            lastHeartbeat: serverTimestamp()
+        };
+        
+        console.log('Setting user ONLINE with enhanced data:', sessionData);
+        
+        // Use set() to completely replace the session with all required fields
+        set(sessionRef, sessionData);
+        set(userStatusRef, 'online');
+
+        // Send notification that user is online
+        // Note: Commented out to prevent circular dependency with NotificationProvider
+        // sendSystemNotification(
+        //     `${user.name} is now online`,
+        //     `${user.email} joined from ${sessionData.device.browser} on ${sessionData.device.os}`,
+        //     'user_online'
+        // );
+
+        // Track page changes
+        const trackPageChange = () => {
+            if (user?.uid) {
+                const activityData = {
+                    type: 'page_view',
+                    page: window.location.pathname,
+                    timestamp: serverTimestamp(),
+                    sessionId: sessionData.sessionId
+                };
+                
+                push(activityRef, activityData);
+                update(sessionRef, {
+                    currentPage: window.location.pathname,
                     lastSeen: serverTimestamp(),
-                    disconnectedAt: serverTimestamp()
+                    currentActivity: 'browsing'
                 });
-                set(userStatusRef, 'offline');
             }
         };
-    }, [user?.uid, user?.email]);
 
-    const logout = async () => {
+        // Enhanced heartbeat every 30 seconds with activity detection
+        const heartbeat = setInterval(() => {
+            if (user?.uid) {
+                console.log('Enhanced heartbeat - keeping user online');
+                
+                // Detect user activity
+                const isActive = document.visibilityState === 'visible';
+                const activityType = isActive ? 'active' : 'away';
+                
+                // Update both lastSeen and ensure status stays online
+                update(sessionRef, {
+                    status: 'online',
+                    lastSeen: serverTimestamp(),
+                    lastHeartbeat: serverTimestamp(),
+                    currentActivity: activityType,
+                    isActive: isActive
+                });
+                set(userStatusRef, 'online');
+                
+                // Log activity
+                if (isActive) {
+                    const activityData = {
+                        type: 'heartbeat',
+                        timestamp: serverTimestamp(),
+                        sessionId: sessionData.sessionId,
+                        activity: activityType
+                    };
+                    push(activityRef, activityData);
+                }
+            }
+        }, 30000);
+
+        // Track visibility changes
+        const handleVisibilityChange = () => {
+            if (user?.uid) {
+                const isActive = document.visibilityState === 'visible';
+                update(sessionRef, {
+                    isActive: isActive,
+                    currentActivity: isActive ? 'active' : 'away',
+                    lastSeen: serverTimestamp()
+                });
+            }
+        };
+
+        // Track mouse movement for activity detection
+        let activityTimeout: NodeJS.Timeout;
+        const handleUserActivity = () => {
+            if (user?.uid) {
+                clearTimeout(activityTimeout);
+                update(sessionRef, {
+                    currentActivity: 'active',
+                    lastSeen: serverTimestamp()
+                });
+                
+                // Set user as away after 5 minutes of inactivity
+                activityTimeout = setTimeout(() => {
+                    if (user?.uid) {
+                        update(sessionRef, {
+                            currentActivity: 'away',
+                            lastSeen: serverTimestamp()
+                        });
+                    }
+                }, 300000); // 5 minutes
+            }
+        };
+
+        // Add event listeners
+        window.addEventListener('visibilitychange', handleVisibilityChange);
+        window.addEventListener('mousemove', handleUserActivity);
+        window.addEventListener('keypress', handleUserActivity);
+        window.addEventListener('click', handleUserActivity);
+        window.addEventListener('scroll', handleUserActivity);
+
+        // Cleanup on logout or component unmount
+        const cleanup = () => {
+            console.log('Cleaning up - setting user OFFLINE');
+            clearInterval(heartbeat);
+            clearTimeout(activityTimeout);
+            
+            window.removeEventListener('visibilitychange', handleVisibilityChange);
+            window.removeEventListener('mousemove', handleUserActivity);
+            window.removeEventListener('keypress', handleUserActivity);
+            window.removeEventListener('click', handleUserActivity);
+            window.removeEventListener('scroll', handleUserActivity);
+            
+            if (user?.uid) {
+                const disconnectData = {
+                    status: 'offline',
+                    lastSeen: serverTimestamp(),
+                    disconnectedAt: serverTimestamp(),
+                    currentActivity: 'offline',
+                    isActive: false
+                };
+                update(sessionRef, disconnectData);
+                set(userStatusRef, 'offline');
+                
+                // Send notification that user is offline
+                // Note: Commented out to prevent circular dependency with NotificationProvider
+                // sendSystemNotification(
+                //     `${user.name} is now offline`,
+                //     `${user.email} has disconnected`,
+                //     'user_offline'
+                // );
+                
+                // Log disconnection
+                const activityData = {
+                    type: 'disconnect',
+                    timestamp: serverTimestamp(),
+                    sessionId: sessionData.sessionId
+                };
+                push(activityRef, activityData);
+            }
+        };
+
+        // Handle page unload
+        window.addEventListener('beforeunload', cleanup);
+
+        return () => {
+            window.removeEventListener('beforeunload', cleanup);
+            cleanup();
+        };
+    }, [user?.uid]); // Only depend on user ID, not the entire user object
+
+    const logout = useCallback(async () => {
         try {
             // Update session and status to offline
             if (user?.uid) {
@@ -214,10 +377,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } catch (error) {
             console.error('Error during logout:', error);
         }
-    };
+    }, [user?.uid]);
+
+    // Memoize context value to prevent unnecessary re-renders
+    const contextValue = useMemo(() => ({
+        user,
+        role,
+        loading,
+        logout
+    }), [user, role, loading, logout]);
 
     return (
-        <AuthContext.Provider value={{ user, role, loading, logout }}>
+        <AuthContext.Provider value={contextValue}>
             {children}
         </AuthContext.Provider>
     );
