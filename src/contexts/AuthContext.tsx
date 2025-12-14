@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
-import { ref, set, onValue, onDisconnect, serverTimestamp, push, update } from 'firebase/database';
+import { ref, set, push, update, serverTimestamp } from 'firebase/database';
 import { rtdb } from '../firebase';
-import { useNotifications } from './NotificationContext';
 
 // Generate unique session ID
 const generateSessionId = () => {
@@ -35,26 +34,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [user, setUser] = useState<User | null>(null);
     const [role, setRole] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
-    const { addNotification, sendSystemNotification } = useNotifications();
-
-    // Helper function to get device info
-    const getDeviceInfo = () => {
-        const userAgent = navigator.userAgent;
-        let deviceInfo = 'Unknown';
-        
-        if (userAgent.includes('Chrome')) deviceInfo = 'Chrome';
-        else if (userAgent.includes('Firefox')) deviceInfo = 'Firefox';
-        else if (userAgent.includes('Safari')) deviceInfo = 'Safari';
-        else if (userAgent.includes('Edge')) deviceInfo = 'Edge';
-        
-        if (userAgent.includes('Windows')) deviceInfo += ' on Windows';
-        else if (userAgent.includes('Mac')) deviceInfo += ' on macOS';
-        else if (userAgent.includes('Linux')) deviceInfo += ' on Linux';
-        else if (userAgent.includes('Android')) deviceInfo += ' on Android';
-        else if (userAgent.includes('iPhone') || userAgent.includes('iPad')) deviceInfo += ' on iOS';
-        
-        return deviceInfo;
-    };
 
     useEffect(() => {
         console.log('AuthProvider - Initializing...');
@@ -121,17 +100,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     useEffect(() => {
         // Enhanced real-time presence tracking
-        if (!user?.uid || !user?.email) {
+        const uid = user?.uid;
+        if (!uid) {
             console.log('No valid user, skipping presence tracking');
             return;
         }
 
-        console.log('Setting up ENHANCED presence tracking for user:', user.uid);
+        console.log('Setting up ENHANCED presence tracking for user:', uid);
 
         // Create references
-        const sessionRef = ref(rtdb, `sessions/${user.uid}`);
-        const userStatusRef = ref(rtdb, `users/${user.uid}/status`);
-        const activityRef = ref(rtdb, `activities/${user.uid}`);
+        const sessionRef = ref(rtdb, `sessions/${uid}`);
+        const userStatusRef = ref(rtdb, `users/${uid}/status`);
+        const activityRef = ref(rtdb, `activities/${uid}`);
         
         // Enhanced device and browser information
         const getDeviceInfo = () => {
@@ -177,7 +157,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         // Enhanced session data
         const sessionData = {
-            uid: user.uid,
+            uid: uid,
             email: user.email,
             name: user.name,
             role: user.role,
@@ -205,25 +185,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         //     `${user.email} joined from ${sessionData.device.browser} on ${sessionData.device.os}`,
         //     'user_online'
         // );
-
-        // Track page changes
-        const trackPageChange = () => {
-            if (user?.uid) {
-                const activityData = {
-                    type: 'page_view',
-                    page: window.location.pathname,
-                    timestamp: serverTimestamp(),
-                    sessionId: sessionData.sessionId
-                };
-                
-                push(activityRef, activityData);
-                update(sessionRef, {
-                    currentPage: window.location.pathname,
-                    lastSeen: serverTimestamp(),
-                    currentActivity: 'browsing'
-                });
-            }
-        };
 
         // Enhanced heartbeat every 30 seconds with activity detection
         const heartbeat = setInterval(() => {

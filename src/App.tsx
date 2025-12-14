@@ -44,7 +44,7 @@ interface ProtectedRouteProps {
   allowedRoles?: string[];
 }
 
-const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
+const ProtectedRoute = ({ children, allowedRoles = [] }: ProtectedRouteProps) => {
   const { user, loading, role } = useAuth();
   console.log('ProtectedRoute - User:', user);
   console.log('ProtectedRoute - Role:', role);
@@ -60,8 +60,8 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
   
   if (!user) return <Navigate to="/login" />;
   
-  // Check role-based access if allowedRoles is specified
-  if (allowedRoles && role && !allowedRoles.includes(role)) {
+  // Check role-based access if allowedRoles is specified and not empty
+  if (allowedRoles.length > 0 && role && !allowedRoles.includes(role)) {
     return (
       <Box sx={{ p: 3 }}>
         <Typography variant="h5" color="error">Access Denied</Typography>

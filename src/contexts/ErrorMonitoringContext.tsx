@@ -221,33 +221,47 @@ export const ErrorMonitoringProvider: React.FC<{ children: React.ReactNode }> = 
         const errorMessage = error instanceof Error ? error.message : error;
         const stack = error instanceof Error ? error.stack : undefined;
 
+        // Guard against missing user ID
+        const uid = currentUserId;
+        if (!uid) {
+            console.warn('Cannot track error: User not authenticated');
+            return;
+        }
+
         const errorEvent: Omit<ErrorEvent, 'id' | 'timestamp'> = {
             level,
             type,
-            message: errorMessage,
-            stack,
+            message: errorMessage ?? "Unknown error",
+            stack: stack ?? undefined,
             source: {
-                file: window.location.href,
+                file: window.location.href ?? "unknown",
                 line: 0,
                 column: 0
             },
-            userAgent: navigator.userAgent,
-            url: window.location.href,
-            userId: currentUserId || undefined,
-            sessionId: localStorage.getItem('currentSessionId') || undefined,
+            userAgent: navigator.userAgent ?? "unknown",
+            url: window.location.href ?? "unknown",
+            userId: uid ?? "anonymous",
+            sessionId: localStorage.getItem('currentSessionId') ?? undefined,
             resolved: false,
             metadata: {
                 timestamp: new Date().toISOString(),
                 viewport: `${window.innerWidth}x${window.innerHeight}`,
-                online: navigator.onLine
+                online: navigator.onLine ?? false
             }
         };
 
         // Convert undefined to null for Firebase compatibility
         const firebaseData = {
             ...errorEvent,
+            stack: stack || null,
             userId: errorEvent.userId || null,
-            sessionId: errorEvent.sessionId || null
+            sessionId: errorEvent.sessionId || null,
+            metadata: errorEvent.metadata ? {
+                ...errorEvent.metadata,
+                timestamp: errorEvent.metadata.timestamp || null,
+                viewport: errorEvent.metadata.viewport || null,
+                online: errorEvent.metadata.online !== undefined ? errorEvent.metadata.online : null
+            } : null
         };
 
         const errorsRef = ref(rtdb, 'errors');
@@ -262,15 +276,22 @@ export const ErrorMonitoringProvider: React.FC<{ children: React.ReactNode }> = 
 
     // Track performance
     const trackPerformance = (name: string, value: number, unit: PerformanceMetric['unit'], type: PerformanceMetric['type']) => {
+        // Guard against missing user ID
+        const uid = currentUserId;
+        if (!uid) {
+            console.warn('Cannot track performance: User not authenticated');
+            return;
+        }
+
         const metric: Omit<PerformanceMetric, 'id' | 'timestamp'> = {
-            name,
-            value,
-            unit,
-            type,
+            name: name ?? "unknown",
+            value: value ?? 0,
+            unit: unit ?? "ms",
+            type: type ?? "performance",
             metadata: {
-                userId: currentUserId || undefined,
-                sessionId: localStorage.getItem('currentSessionId') || undefined,
-                url: window.location.href
+                userId: uid ?? "anonymous",
+                sessionId: localStorage.getItem('currentSessionId') ?? null,
+                url: window.location.href ?? "unknown"
             }
         };
 
@@ -298,6 +319,13 @@ export const ErrorMonitoringProvider: React.FC<{ children: React.ReactNode }> = 
 
     // Resolve error
     const resolveError = async (errorId: string) => {
+        // Guard against missing user ID
+        const uid = currentUserId;
+        if (!uid) {
+            console.warn('Cannot resolve error: User not authenticated');
+            return;
+        }
+
         const errorRef = ref(rtdb, `errors/${errorId}`);
         const snapshot = await get(errorRef);
         const error = snapshot.val();
@@ -306,11 +334,11 @@ export const ErrorMonitoringProvider: React.FC<{ children: React.ReactNode }> = 
             update(errorRef, {
                 resolved: true,
                 resolvedAt: serverTimestamp(),
-                resolvedBy: currentUserId || null
+                resolvedBy: uid
             });
 
             addNotification({
-                userId: currentUserId || '',
+                userId: uid,
                 type: 'success',
                 title: 'Error Resolved',
                 message: `Error "${error.message}" has been marked as resolved`
@@ -486,11 +514,18 @@ export const ErrorMonitoringProvider: React.FC<{ children: React.ReactNode }> = 
 
     // Clear errors
     const clearErrors = () => {
+        // Guard against missing user ID
+        const uid = currentUserId;
+        if (!uid) {
+            console.warn('Cannot clear errors: User not authenticated');
+            return;
+        }
+
         const errorsRef = ref(rtdb, 'errors');
         remove(errorsRef);
         
         addNotification({
-            userId: currentUserId || '',
+            userId: uid,
             type: 'success',
             title: 'Errors Cleared',
             message: 'All errors have been cleared from the system'

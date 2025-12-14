@@ -13,7 +13,6 @@ import {
     TableChart as TableChartIcon,
     AccessTime as AccessTimeIcon,
     Add as AddIcon,
-    Remove as RemoveIcon,
     Delete as DeleteIcon,
     Edit as EditIcon,
     Folder as FolderIcon

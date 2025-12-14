@@ -12,8 +12,7 @@ import {
     List,
     ListItem,
     ListItemText,
-    ListItemIcon,
-    Tooltip
+    ListItemIcon
 } from '@mui/material';
 import {
     CheckCircle as CheckCircleIcon,
@@ -121,15 +120,6 @@ const SystemHealth: React.FC = () => {
         };
     }, []);
 
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case 'healthy': return 'success';
-            case 'warning': return 'warning';
-            case 'critical': return 'error';
-            default: return 'default';
-        }
-    };
-
     const getStatusIcon = (status: string) => {
         switch (status) {
             case 'healthy': return <CheckCircleIcon color="success" />;
@@ -166,7 +156,7 @@ const SystemHealth: React.FC = () => {
             
             {/* Overall Status */}
             <Alert 
-                severity={healthStatus.status} 
+                severity={healthStatus.status as any} 
                 sx={{ mb: 3 }}
                 icon={getStatusIcon(healthStatus.status)}
             >

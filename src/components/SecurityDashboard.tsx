@@ -603,6 +603,6 @@ const SecurityDashboard: React.FC = memo(() => {
             </Paper>
         </Box>
     );
-};
+});
 
 export default SecurityDashboard;

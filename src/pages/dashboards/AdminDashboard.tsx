@@ -14,9 +14,9 @@ import {
     Analytics as AnalyticsIcon,
     AccessTime as AccessTimeIcon,
     Group as GroupIcon,
-    BugReport as BugReportIcon
+    BugReport as BugReportIcon,
+    TrendingUp as TrendingUpIcon
 } from '@mui/icons-material';
-import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import {
     Grid,
     Paper,

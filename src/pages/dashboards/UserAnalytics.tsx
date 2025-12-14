@@ -9,52 +9,30 @@ import {
   Chip,
   LinearProgress,
   Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Switch,
-  FormControlLabel,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
   Tabs,
   Tab
 } from '@mui/material';
 import {
   Person,
-  Computer,
-  AccessTime,
   TrendingUp,
   Group,
-  Timeline,
-  BarChart,
-  PieChart,
-  Activity,
   Wifi,
   WifiOff
 } from '@mui/icons-material';
 import { ref, onValue, get } from 'firebase/database';
 import { rtdb } from '../../firebase';
 import {
-  LineChart,
-  Line,
   AreaChart,
   Area,
-  BarChart as RechartsBarChart,
-  Bar,
-  PieChart as RechartsPieChart,
-  Pie,
-  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
-  ResponsiveContainer
+  ResponsiveContainer,
+  PieChart as RechartsPieChart,
+  Pie,
+  Cell,
+  Legend
 } from 'recharts';
 
 interface User {
@@ -106,7 +84,6 @@ export default function UserAnalytics() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const [tabValue, setTabValue] = useState(0);
-  const [timeRange, setTimeRange] = useState('today');
 
   useEffect(() => {
     // Fetch users and sessions
@@ -217,43 +194,6 @@ export default function UserAnalytics() {
     };
   }, []);
 
-  // Add mock data for testing if no real data exists
-  const mockSessions: Session[] = [
-    {
-      uid: 'test1',
-      email: 'test1@example.com',
-      name: 'Test User 1',
-      role: 'developer',
-      status: 'online',
-      device: 'Chrome',
-      lastSeen: new Date(),
-      connectedAt: new Date(),
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-    },
-    {
-      uid: 'test2', 
-      email: 'test2@example.com',
-      name: 'Test User 2',
-      role: 'manager',
-      status: 'offline',
-      device: 'Firefox',
-      lastSeen: new Date(),
-      connectedAt: new Date(),
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0'
-    },
-    {
-      uid: 'test3',
-      email: 'test3@example.com',
-      name: 'Test User 3',
-      role: 'admin',
-      status: 'online',
-      device: 'Safari',
-      lastSeen: new Date(),
-      connectedAt: new Date(),
-      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15'
-    }
-  ];
-
   // Always use real sessions data, no fallback to mock for production
   const displaySessions = sessions;
 
@@ -346,17 +286,8 @@ export default function UserAnalytics() {
   console.log('Edge count:', deviceData[3].count);
   console.log('Unknown count:', deviceData[4].count);
 
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'online': return '#4caf50';
-      case 'offline': return '#9e9e9e';
-      case 'active': return '#2196f3';
-      default: return '#9e9e9e';
-    }
   };
 
   const getRoleColor = (role: string) => {
@@ -707,7 +638,7 @@ export default function UserAnalytics() {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    label={(props: any) => `${props.name || ''} ${(props.percent || 0 * 100).toFixed(0)}%`}
                     outerRadius={80}
                     fill="#8884d8"
                     dataKey="value"
