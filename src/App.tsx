@@ -9,7 +9,7 @@ import { ErrorMonitoringProvider } from './contexts/ErrorMonitoringContext';
 import { CollaborationProvider } from './contexts/CollaborationContext';
 import { DataSyncProvider } from './contexts/DataSyncContext';
 import { SecurityMonitoringProvider } from './contexts/SecurityMonitoringContext';
-import { NotificationCenter, NotificationToast } from './components/Notifications';
+import { NotificationToast } from './components/Notifications';
 import { LiveCursorOverlay, TypingIndicator, CollaborationPanel } from './components/LiveCursors';
 import { RealTimeUI } from './components/RealTimeUI';
 import { rtdb } from './firebase';
@@ -20,9 +20,7 @@ import AdminDashboard from './pages/dashboards/AdminDashboard';
 import AdminAnalytics from './pages/dashboards/AdminAnalytics';
 import AdminUserAnalytics from './pages/dashboards/AdminUserAnalytics';
 import UserAnalytics from './pages/dashboards/UserAnalytics';
-import ManagerDashboard from './pages/dashboards/ManagerDashboard';
-import DeveloperDashboard from './pages/dashboards/DeveloperDashboard';
-import TesterDashboard from './pages/dashboards/TesterDashboard';
+import ManagerManagement from './pages/dashboards/ManagerDashboard';
 import SystemHealth from './pages/dashboards/SystemHealth';
 import SecurityAudit from './pages/dashboards/SecurityAudit';
 import UserActivityMonitor from './pages/dashboards/UserActivityMonitor';
@@ -30,6 +28,7 @@ import BulkUserOperations from './pages/dashboards/BulkUserOperations';
 import FeatureFlags from './pages/dashboards/FeatureFlags';
 import ErrorLogs from './pages/dashboards/ErrorLogs';
 import Family from './pages/Team';
+import Projects from './pages/Projects';
 
 const theme = createTheme({
   palette: {
@@ -86,7 +85,7 @@ const DashboardRouter = () => {
   
   switch (role) {
     case 'admin': return <AdminDashboard />;
-    case 'manager': 
+    case 'manager': return <ManagerManagement />;
     case 'developer': 
     case 'tester': return <WorkInProgress />;
     default: return (
@@ -137,7 +136,7 @@ function App() {
                           <Route path="wip" element={<WorkInProgress />} />
                           <Route path="family" element={<Family />} />
                           <Route path="team" element={<Navigate to="/family" replace />} />
-                          <Route path="projects" element={<div>Projects Page (Coming Soon)</div>} />
+                          <Route path="projects" element={<Projects />} />
                           <Route path="bugs" element={<div>Bugs Page (Coming Soon)</div>} />
                         </Route>
                       </Routes>

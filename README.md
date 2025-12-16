@@ -2,6 +2,18 @@
 
 A comprehensive team collaboration ecosystem built with React, TypeScript, and Vite. Devium enables multiple teams to form, collaborate, and manage multiple projects simultaneously with role-based access control.
 
+## Recent Updates
+- **Enhanced UI Design**: Professional dark theme with gradient effects and glass-morphism styling
+- **Improved Project Dashboard**: Modern statistics cards and enhanced search/filter controls
+- **Team Management Interface**: Updated ManagerDashboard with better visual hierarchy
+- **Animation Removal**: Clean, professional design without distracting animations
+- **Team Assignment Fixes**: Improved team-project relationship mapping
+
+## Development Status
+- **Current Focus**: UI Enhancement and Core Feature Improvements
+- **Upcoming**: Team assignment correction, device authentication, developer ecosystem
+- **See todo.txt for detailed roadmap**
+
 [**📖 Read the Full Documentation**](./DOCUMENTATION.md)
 
 ## Features

@@ -3,19 +3,16 @@ import { ref, onValue, set, remove, push } from 'firebase/database';
 import { rtdb } from '../../firebase';
 
 import {
-    Refresh as RefreshIcon,
     CheckCircle as CheckCircleIcon,
     People as PeopleIcon,
     Person as PersonIcon,
-    Edit as EditIcon,
     Delete as DeleteIcon,
-    Search as SearchIcon,
     AdminPanelSettings as AdminPanelSettingsIcon,
-    Analytics as AnalyticsIcon,
     AccessTime as AccessTimeIcon,
     Group as GroupIcon,
     BugReport as BugReportIcon,
-    TrendingUp as TrendingUpIcon
+    TrendingUp as TrendingUpIcon,
+    Add as AddIcon
 } from '@mui/icons-material';
 import {
     Grid,
@@ -46,9 +43,9 @@ import {
     ListItemAvatar,
     ListItemText,
     Divider,
-    Tooltip,
-    InputAdornment,
-    Fab
+    FormControl,
+    InputLabel,
+    Select
 } from '@mui/material';
 
 interface User {
@@ -60,6 +57,15 @@ interface User {
     lastLogin: string;
     password?: string;
     createdAt?: string;
+}
+
+interface Team {
+    id: string;
+    name: string;
+    managerId: string;
+    managerName: string;
+    members: string[];
+    createdAt: string;
 }
 
 interface Stats {
@@ -127,8 +133,7 @@ const StatCardComponent = ({ title, value, icon, color, subtitle }: StatCardProp
 
 export default function AdminDashboard() {
     const [users, setUsers] = useState<User[]>([]);
-    const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
-    const [searchTerm, setSearchTerm] = useState('');
+    const [teams, setTeams] = useState<Team[]>([]);
     const [stats, setStats] = useState<Stats>({
         totalUsers: 0,
         adminCount: 0,
@@ -140,24 +145,8 @@ export default function AdminDashboard() {
         inactiveUsers: 0,
     });
     const [loading, setLoading] = useState(true);
-    const [editDialogOpen, setEditDialogOpen] = useState(false);
-    const [selectedUser, setSelectedUser] = useState<User | null>(null);
+    const [teamDialogOpen, setTeamDialogOpen] = useState(false);
     const [recentActivity, setRecentActivity] = useState<User[]>([]);
-    const [error, setError] = useState<string | null>(null);
-
-    // Filter users based on search term
-    useEffect(() => {
-        if (searchTerm.trim() === '') {
-            setFilteredUsers(users);
-        } else {
-            const filtered = users.filter(user => 
-                user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                user.role.toLowerCase().includes(searchTerm.toLowerCase())
-            );
-            setFilteredUsers(filtered);
-        }
-    }, [searchTerm, users]);
 
     const safeDateParse = (dateString: string): Date | null => {
         try {
@@ -175,16 +164,15 @@ export default function AdminDashboard() {
         
         const loadData = async () => {
             try {
+                // Load users
                 const usersRef = ref(rtdb, 'users');
-                const unsubscribe = onValue(usersRef, (snapshot) => {
+                const usersUnsubscribe = onValue(usersRef, (snapshot) => {
                     try {
                         if (!isMounted) return;
                         
                         const data = snapshot.val();
                         if (!data) {
-                            console.log('No data available');
-                            setLoading(false);
-                            setError('No user data available');
+                            console.log('No user data available');
                             return;
                         }
 
@@ -233,34 +221,48 @@ export default function AdminDashboard() {
                             })
                             .slice(0, 5);
                         setRecentActivity(recent);
-                        setError(null);
                     } catch (error) {
                         console.error('Error processing user data:', error);
-                        setError('Failed to process user data');
-                    } finally {
-                        if (isMounted) {
-                            setLoading(false);
-                        }
                     }
                 }, (error) => {
                     console.error('Firebase read failed:', error);
-                    if (isMounted) {
-                        setError('Failed to load data from server');
-                        setLoading(false);
+                });
+
+                // Load teams
+                const teamsRef = ref(rtdb, 'teams');
+                const teamsUnsubscribe = onValue(teamsRef, (snapshot) => {
+                    try {
+                        if (!isMounted) return;
+                        
+                        const data = snapshot.val();
+                        if (data) {
+                            const teamsList: Team[] = Object.entries(data).map(([id, teamData]: [string, any]) => ({
+                                id,
+                                name: teamData?.name || 'Unknown Team',
+                                managerId: teamData?.managerId || '',
+                                managerName: teamData?.managerName || 'Unknown Manager',
+                                members: teamData?.members || [],
+                                createdAt: teamData?.createdAt || new Date().toISOString(),
+                            }));
+                            setTeams(teamsList);
+                        }
+                    } catch (error) {
+                        console.error('Error processing team data:', error);
                     }
                 });
 
                 return () => {
                     try {
-                        unsubscribe();
+                        usersUnsubscribe();
+                        teamsUnsubscribe();
                     } catch (error) {
                         console.error('Error unsubscribing:', error);
                     }
                 };
             } catch (error) {
                 console.error('Error setting up Firebase listener:', error);
+            } finally {
                 if (isMounted) {
-                    setError('Failed to initialize data loading');
                     setLoading(false);
                 }
             }
@@ -273,29 +275,36 @@ export default function AdminDashboard() {
         };
     }, []);
 
-    const handleEditUser = (user: User) => {
-        setSelectedUser(user);
-        setEditDialogOpen(true);
-    };
-
-    const handleSaveUser = async () => {
-        if (selectedUser) {
-            try {
-                await set(ref(rtdb, `users/${selectedUser.uid}`), {
-                    ...selectedUser,
-                    updatedAt: new Date().toISOString()
-                });
-                setEditDialogOpen(false);
-            } catch (error) {
-                console.error('Error updating user:', error);
-                setError('Failed to update user');
+    const handleCreateTeam = async (teamName: string, managerId: string) => {
+        try {
+            const manager = users.find(u => u.uid === managerId);
+            if (!manager) {
+                console.error('Selected manager not found');
+                return;
             }
+
+            const newTeamRef = push(ref(rtdb, 'teams'));
+            const teamData = {
+                name: teamName,
+                managerId: managerId,
+                managerName: manager.name,
+                members: [],
+                createdAt: new Date().toISOString(),
+                performance: 0,
+                growth: 0,
+                projects: []
+            };
+
+            await set(newTeamRef, teamData);
+            setTeamDialogOpen(false);
+        } catch (error) {
+            console.error('Error creating team:', error);
         }
     };
 
-    const handleDeleteUser = async (uid: string) => {
-        if (window.confirm('Are you sure you want to delete this user?')) {
-            await remove(ref(rtdb, `users/${uid}`));
+    const handleDeleteTeam = async (teamId: string) => {
+        if (window.confirm('Are you sure you want to delete this team?')) {
+            await remove(ref(rtdb, `teams/${teamId}`));
         }
     };
 
@@ -534,6 +543,99 @@ export default function AdminDashboard() {
                     )}
                 </List>
             </Paper>
+
+            {/* Team Management Section */}
+            <Paper sx={{ p: 3, mt: 3 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                        Team Management
+                    </Typography>
+                    <Button
+                        variant="contained"
+                        startIcon={<AddIcon />}
+                        onClick={() => setTeamDialogOpen(true)}
+                    >
+                        Create Team
+                    </Button>
+                </Box>
+                <TableContainer>
+                    <Table>
+                        <TableHead>
+                            <TableRow>
+                                <TableCell>Team Name</TableCell>
+                                <TableCell>Manager</TableCell>
+                                <TableCell>Members</TableCell>
+                                <TableCell>Created</TableCell>
+                                <TableCell>Actions</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {teams.map((team) => (
+                                <TableRow key={team.id}>
+                                    <TableCell>{team.name}</TableCell>
+                                    <TableCell>{team.managerName}</TableCell>
+                                    <TableCell>{team.members.length}</TableCell>
+                                    <TableCell>{new Date(team.createdAt).toLocaleDateString()}</TableCell>
+                                    <TableCell>
+                                        <IconButton
+                                            size="small"
+                                            color="error"
+                                            onClick={() => handleDeleteTeam(team.id)}
+                                        >
+                                            <DeleteIcon />
+                                        </IconButton>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+            </Paper>
+
+            {/* Team Creation Dialog */}
+            <Dialog open={teamDialogOpen} onClose={() => setTeamDialogOpen(false)} maxWidth="sm" fullWidth>
+                <DialogTitle>Create New Team</DialogTitle>
+                <DialogContent>
+                    <TextField
+                        autoFocus
+                        margin="dense"
+                        label="Team Name"
+                        type="text"
+                        fullWidth
+                        variant="outlined"
+                        sx={{ mb: 2 }}
+                        id="team-name-input"
+                    />
+                    <FormControl fullWidth>
+                        <InputLabel>Assign Manager</InputLabel>
+                        <Select
+                            label="Assign Manager"
+                            id="manager-select"
+                        >
+                            {users.filter(u => u.role === 'manager').map((manager) => (
+                                <MenuItem key={manager.uid} value={manager.uid}>
+                                    {manager.name} ({manager.email})
+                                </MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setTeamDialogOpen(false)}>Cancel</Button>
+                    <Button
+                        onClick={() => {
+                            const teamName = (document.getElementById('team-name-input') as HTMLInputElement)?.value;
+                            const managerId = (document.getElementById('manager-select') as HTMLSelectElement)?.value;
+                            if (teamName && managerId) {
+                                handleCreateTeam(teamName, managerId);
+                            }
+                        }}
+                        variant="contained"
+                    >
+                        Create Team
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 }

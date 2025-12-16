@@ -1,0 +1,36 @@
+# Devium TODO List
+
+## High Priority Tasks
+
+### 1) Project Team Assignment Correction
+- Fix team assignment logic in Projects.tsx
+- Ensure proper team display with correct member counts
+- Resolve "Team: Unassigned 0 members" issue
+- Implement proper team-project relationship mapping
+
+### 2) One Time One Device Algorithm
+- Implement device authentication system
+- Ensure single device login per user
+- Add device management functionality
+- Prevent simultaneous login from multiple devices
+- Create device session tracking
+
+### 3) Developer Ecosystem
+- Build comprehensive developer tools
+- Create API documentation portal
+- Implement developer dashboard
+- Add code collaboration features
+- Set up development environment templates
+- Create plugin system architecture
+
+## Additional Notes
+- Focus on core functionality first
+- Ensure proper testing for each feature
+- Maintain clean code architecture
+- Follow established coding standards
+- Document all API endpoints and components
+
+## Timeline
+- Phase 1: Team Assignment Correction (Immediate)
+- Phase 2: One Device Algorithm (Short-term)
+- Phase 3: Developer Ecosystem (Long-term)
