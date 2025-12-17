@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { ref, onValue, update, remove, set } from 'firebase/database';
+import { ref, onValue, update, remove } from 'firebase/database';
 import { rtdb } from '../firebase';
 import TaskManagement from '../components/TaskManagement';
 import TaskAssignment from '../components/TaskAssignment';
@@ -13,7 +13,6 @@ import {
     Grid,
     Card,
     CardContent,
-    CardActions,
     Chip,
     LinearProgress,
     Paper,
@@ -29,8 +28,7 @@ import {
     DialogTitle,
     DialogContent,
     DialogActions,
-    Tabs,
-    Tab
+    Alert
 } from '@mui/material';
 import {
     Edit as EditIcon,
@@ -206,11 +204,6 @@ export default function Projects() {
         setTaskManagementView('workflow');
     };
 
-    const handleTaskDependencies = (project: Project) => {
-        setSelectedProjectForTasks(project);
-        setTaskManagementView('dependencies');
-    };
-
     const handleUpdateProject = async () => {
         if (!selectedProject) return;
         
@@ -246,10 +239,6 @@ export default function Projects() {
         } catch (error) {
             console.error('Error deleting project:', error);
         }
-    };
-
-    const handleCreateProject = () => {
-        setCreateDialogOpen(true);
     };
 
     if (loading) {
@@ -824,24 +813,13 @@ export default function Projects() {
                                         </Box>
 
                                         {/* Project Information */}
-                                        <Box sx={{ 
-                                            display: 'flex', 
-                                            justifyContent: 'space-between', 
-                                            alignItems: 'center',
+                                        <Box sx={{
+                                            background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)',
+                                            borderRadius: '12px',
                                             p: 2,
-                                            bgcolor: 'rgba(255, 255, 255, 0.05)',
-                                            borderRadius: 2,
                                             border: '1px solid rgba(255, 255, 255, 0.1)',
                                             mb: 2
                                         }}>
-                                            <Box>
-                                                <Typography variant="caption" color="white" sx={{ fontWeight: 500, display: 'block' }}>
-                                                    Team: {project.teamName}
-                                                </Typography>
-                                                <Typography variant="caption" color="rgba(255, 255, 255, 0.7)">
-                                                    {project.assignedMembers.length} members
-                                                </Typography>
-                                            </Box>
                                             <Typography variant="caption" color="rgba(255, 255, 255, 0.8)" sx={{ fontWeight: 500 }}>
                                                 {new Date(project.startDate).toLocaleDateString('en-US', { 
                                                     month: 'short', 
