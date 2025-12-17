@@ -43,6 +43,8 @@ import { ref, onValue, update } from 'firebase/database';
 import { rtdb } from '../firebase';
 import { Task, WorkloadMetrics } from '../types/task';
 
+// Using only real-time Firebase data - no hardcoded sample tasks
+
 interface TeamMember {
     uid: string;
     name: string;
@@ -53,10 +55,16 @@ interface TeamMember {
 
 interface TaskAssignmentProps {
     projectId: string;
+    projectTeamMembers?: Array<{
+        id: string;
+        name: string;
+        email: string;
+        role?: string;
+    }>;
     onTaskAssigned?: (taskId: string, assignedTo: string) => void;
 }
 
-const TaskAssignment: React.FC<TaskAssignmentProps> = ({ projectId, onTaskAssigned }) => {
+const TaskAssignment: React.FC<TaskAssignmentProps> = ({ projectId, projectTeamMembers, onTaskAssigned }) => {
     const { user } = useAuth();
     const [tasks, setTasks] = useState<Task[]>([]);
     const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
@@ -76,22 +84,52 @@ const TaskAssignment: React.FC<TaskAssignmentProps> = ({ projectId, onTaskAssign
 
         const unsubscribeTasks = onValue(tasksRef, (snapshot) => {
             const data = snapshot.val();
+            let tasksList: Task[] = [];
+            
             if (data) {
-                const tasksList: Task[] = Object.entries(data)
+                tasksList = Object.entries(data)
                     .map(([id, taskData]: [string, any]) => ({
                         id,
                         ...taskData
                     }))
                     .filter(task => task.projectId === projectId);
-                setTasks(tasksList);
             }
-        });
-
+            
+            // Always show sample tasks for demonstration
+            const sampleTasks: Task[] = []; // Use only real-time Firebase data
+            const allTasks = tasksList.length > 0 ? tasksList : sampleTasks;
+            console.log('TaskAssignment Debug:', {
+                originalProjectId: projectId,
+                hasFirebaseData: !!data,
+                tasksList: tasksList.length,
+                sampleTasks: sampleTasks.length,
+                finalTasks: allTasks.length
+            });
+            setTasks(allTasks);
+});
+        // Use project team members if provided, otherwise use fallback
+        if (projectTeamMembers && projectTeamMembers.length > 0) {
+            const members: TeamMember[] = projectTeamMembers.map(member => ({
+                uid: member.id,
+                name: member.name,
+                email: member.email,
+                role: member.role || 'developer',
+                avatar: member.avatar
+            }));
+            console.log('Team Members Debug:', {
+                projectTeamMembers: projectTeamMembers.length,
+                mappedMembers: members.length,
+                members: members.map(m => ({ uid: m.uid, name: m.name }))
+            });
+            setTeamMembers(members);
+        }
+        
+        // Load users if no project team members provided
         const unsubscribeUsers = onValue(usersRef, (snapshot) => {
             const data = snapshot.val();
-            if (data) {
+            if (data && !projectTeamMembers) {
                 const members: TeamMember[] = Object.entries(data)
-                    .map(([uid, userData]: [string, any]) => ({
+                    .map(([uid, userData]: [string, any]) =>({
                         uid,
                         name: userData.name || 'Unknown',
                         email: userData.email || '',
@@ -103,13 +141,15 @@ const TaskAssignment: React.FC<TaskAssignmentProps> = ({ projectId, onTaskAssign
         });
 
         return () => {
-            unsubscribeTasks();
             unsubscribeUsers();
+            unsubscribeTasks();
         };
-    }, [user, projectId]);
+    }, [user, projectId, projectTeamMembers]);
 
     // Calculate workload metrics
     useEffect(() => {
+        if (teamMembers.length === 0) return;
+        
         const metrics: WorkloadMetrics[] = teamMembers.map(member => {
             const memberTasks = tasks.filter(task => task.assignedTo === member.uid);
             const completedTasks = memberTasks.filter(task => task.status === 'done');
@@ -204,7 +244,7 @@ const TaskAssignment: React.FC<TaskAssignmentProps> = ({ projectId, onTaskAssign
             <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                     <Avatar sx={{ mr: 2, bgcolor: '#3B82F6' }}>
-                        {metric.userName.charAt(0).toUpperCase()}
+                        {metric.userName?.charAt(0)?.toUpperCase() || 'U'}
                     </Avatar>
                     <Box sx={{ flex: 1 }}>
                         <Typography variant="h6" color="white" sx={{ fontSize: '1rem' }}>
@@ -337,8 +377,15 @@ const TaskAssignment: React.FC<TaskAssignmentProps> = ({ projectId, onTaskAssign
                         </Typography>
 
                         <List>
-                            {tasks
-                                .filter(task => task.status !== 'done')
+                            {(() => {
+                                const activeTasks = tasks.filter(task => task.status !== 'done');
+                                console.log('Active Tasks for Reassignment:', {
+                                    totalTasks: tasks.length,
+                                    activeTasks: activeTasks.length,
+                                    tasks: tasks.map(t => ({ id: t.id, title: t.title, status: t.status }))
+                                });
+                                return activeTasks;
+                            })()
                                 .map((task) => {
                                     const bestAssignee = getBestAssignee(task.assignedTo);
                                     const currentAssignee = teamMembers.find(m => m.uid === task.assignedTo);
@@ -417,7 +464,7 @@ const TaskAssignment: React.FC<TaskAssignmentProps> = ({ projectId, onTaskAssign
                                             <MenuItem key={member.uid} value={member.uid}>
                                                 <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
                                                     <Avatar sx={{ mr: 2, width: 24, height: 24 }}>
-                                                        {member.name.charAt(0).toUpperCase()}
+                                                        {member.name?.charAt(0)?.toUpperCase() || 'U'}
                                                     </Avatar>
                                                     <Box sx={{ flex: 1 }}>
                                                         <Typography variant="body2">{member.name}</Typography>
@@ -454,6 +501,6 @@ const TaskAssignment: React.FC<TaskAssignmentProps> = ({ projectId, onTaskAssign
             </Dialog>
         </Box>
     );
-};
+}
 
 export default TaskAssignment;

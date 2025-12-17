@@ -9,9 +9,10 @@ import { ErrorMonitoringProvider } from './contexts/ErrorMonitoringContext';
 import { CollaborationProvider } from './contexts/CollaborationContext';
 import { DataSyncProvider } from './contexts/DataSyncContext';
 import { SecurityMonitoringProvider } from './contexts/SecurityMonitoringContext';
+import { ChatProvider } from './contexts/ChatContext';
 import { NotificationToast } from './components/Notifications';
 import { LiveCursorOverlay, TypingIndicator, CollaborationPanel } from './components/LiveCursors';
-import { RealTimeUI } from './components/RealTimeUI';
+import ChatSidebar from './components/Chat/ChatSidebar';
 import { rtdb } from './firebase';
 import DashboardLayout from './layouts/DashboardLayout';
 import Login from './pages/Login';
@@ -108,7 +109,24 @@ const DashboardRouter = () => {
   }
 };
 
+// Authenticated Chat Sidebar Component
+function AuthenticatedChatSidebar() {
+  const { user } = useAuth();
+  
+  if (!user) return null;
+  
+  return (
+    <ChatSidebar
+      userId={user.uid}
+      userName={user.email || 'User'}
+      userEmail={user.email || 'user@example.com'}
+    />
+  );
+}
+
 function App() {
+  const { user } = useAuth();
+  
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
@@ -119,33 +137,35 @@ function App() {
               <ActivityAnalyticsProvider>
                 <NotificationProvider>
                   <AuthProvider>
-                    <Router>
-                      <Routes>
-                        <Route path="/login" element={<Login />} />
-                        <Route path="/" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
-                          <Route index element={<DashboardRouter />} />
-                          <Route path="analytics" element={<ProtectedRoute allowedRoles={['manager', 'admin']}><UserAnalytics /></ProtectedRoute>} />
-                          <Route path="admin-analytics" element={<ProtectedRoute allowedRoles={['admin']}><AdminAnalytics /></ProtectedRoute>} />
-                          <Route path="admin-users" element={<ProtectedRoute allowedRoles={['admin']}><AdminUserAnalytics /></ProtectedRoute>} />
-                          <Route path="system-health" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><SystemHealth /></ProtectedRoute>} />
-                          <Route path="security-audit" element={<ProtectedRoute allowedRoles={['admin']}><SecurityAudit /></ProtectedRoute>} />
-                          <Route path="user-activity" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><UserActivityMonitor /></ProtectedRoute>} />
-                          <Route path="bulk-operations" element={<ProtectedRoute allowedRoles={['admin']}><BulkUserOperations /></ProtectedRoute>} />
-                          <Route path="feature-flags" element={<ProtectedRoute allowedRoles={['admin']}><FeatureFlags /></ProtectedRoute>} />
-                          <Route path="error-logs" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><ErrorLogs /></ProtectedRoute>} />
-                          <Route path="wip" element={<WorkInProgress />} />
-                          <Route path="family" element={<Family />} />
-                          <Route path="team" element={<Navigate to="/family" replace />} />
-                          <Route path="projects" element={<Projects />} />
-                          <Route path="bugs" element={<div>Bugs Page (Coming Soon)</div>} />
-                        </Route>
-                      </Routes>
-                    </Router>
-                    <NotificationToast />
-                    <LiveCursorOverlay />
-                    <TypingIndicator />
-                    <CollaborationPanel />
-                    <RealTimeUI />
+                    <ChatProvider>
+                      <Router>
+                        <Routes>
+                          <Route path="/login" element={<Login />} />
+                          <Route path="/" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
+                            <Route index element={<DashboardRouter />} />
+                            <Route path="analytics" element={<ProtectedRoute allowedRoles={['manager', 'admin']}><UserAnalytics /></ProtectedRoute>} />
+                            <Route path="admin-analytics" element={<ProtectedRoute allowedRoles={['admin']}><AdminAnalytics /></ProtectedRoute>} />
+                            <Route path="admin-users" element={<ProtectedRoute allowedRoles={['admin']}><AdminUserAnalytics /></ProtectedRoute>} />
+                            <Route path="system-health" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><SystemHealth /></ProtectedRoute>} />
+                            <Route path="security-audit" element={<ProtectedRoute allowedRoles={['admin']}><SecurityAudit /></ProtectedRoute>} />
+                            <Route path="user-activity" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><UserActivityMonitor /></ProtectedRoute>} />
+                            <Route path="bulk-operations" element={<ProtectedRoute allowedRoles={['admin']}><BulkUserOperations /></ProtectedRoute>} />
+                            <Route path="feature-flags" element={<ProtectedRoute allowedRoles={['admin']}><FeatureFlags /></ProtectedRoute>} />
+                            <Route path="error-logs" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><ErrorLogs /></ProtectedRoute>} />
+                            <Route path="wip" element={<WorkInProgress />} />
+                            <Route path="family" element={<Family />} />
+                            <Route path="team" element={<Navigate to="/family" replace />} />
+                            <Route path="projects" element={<Projects />} />
+                            <Route path="bugs" element={<div>Bugs Page (Coming Soon)</div>} />
+                          </Route>
+                        </Routes>
+                      </Router>
+                      <NotificationToast />
+                      <LiveCursorOverlay />
+                      <TypingIndicator />
+                      <CollaborationPanel />
+                      <AuthenticatedChatSidebar />
+                    </ChatProvider>
                   </AuthProvider>
                 </NotificationProvider>
               </ActivityAnalyticsProvider>

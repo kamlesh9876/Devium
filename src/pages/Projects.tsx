@@ -1,5 +1,6 @@
 
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ref, onValue, update, remove } from 'firebase/database';
 import { rtdb } from '../firebase';
 import TaskManagement from '../components/TaskManagement';
@@ -28,7 +29,7 @@ import {
     DialogTitle,
     DialogContent,
     DialogActions,
-    Alert
+    Avatar
 } from '@mui/material';
 import {
     Edit as EditIcon,
@@ -37,7 +38,6 @@ import {
     Assignment as AssignmentIcon,
     Search as SearchIcon,
     Grid3x3 as GridViewIcon,
-    ViewList as ListViewIcon,
     People as PeopleIcon,
     AccountTree as AccountTreeIcon
 } from '@mui/icons-material';
@@ -56,9 +56,18 @@ interface Project {
     endDate?: string;
     priority: 'low' | 'medium' | 'high' | 'critical';
     assignedMembers: string[];
+    teamMembers?: TeamMember[];
+}
+
+interface TeamMember {
+    id: string;
+    name: string;
+    email: string;
+    role?: string;
 }
 
 export default function Projects() {
+    const navigate = useNavigate();
     const [projects, setProjects] = useState<Project[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -83,26 +92,33 @@ export default function Projects() {
 
     useEffect(() => {
         const loadData = () => {
-            // Load projects
+            // Load projects directly with their assigned team members
             const projectsRef = ref(rtdb, 'projects');
             const projectsUnsubscribe = onValue(projectsRef, (snapshot) => {
                 const data = snapshot.val();
                 if (data) {
-                    const projectsList: Project[] = Object.entries(data).map(([id, projectData]: [string, any]) => ({
-                        id,
-                        name: projectData?.name || 'Unknown Project',
-                        description: projectData?.description || '',
-                        status: projectData?.status || 'planning',
-                        progress: projectData?.progress || 0,
-                        teamId: projectData?.teamId || '',
-                        teamName: projectData?.teamName || 'Unassigned',
-                        tasks: projectData?.tasks || 0,
-                        completedTasks: projectData?.completedTasks || 0,
-                        startDate: projectData?.startDate || new Date().toISOString(),
-                        endDate: projectData?.endDate,
-                        priority: projectData?.priority || 'medium',
-                        assignedMembers: projectData?.assignedMembers || []
-                    }));
+                    const projectsList: Project[] = Object.entries(data).map(([id, projectData]: [string, any]) => {
+                        // Get team members directly from project data using 'members' field
+                        const projectTeamMembers = projectData?.members || [];
+                        const assignedMembers = projectData?.assignedMembers || [];
+
+                        return {
+                            id,
+                            name: projectData?.name || `Project ${id}`,
+                            description: projectData?.description || `Project ${id} - Development and collaboration platform`,
+                            status: projectData?.status || 'planning',
+                            progress: projectData?.progress || 0,
+                            teamId: projectData?.teamId || '',
+                            teamName: projectData?.teamName || projectTeamMembers.filter(m => m && m.name).map(m => m.name).join(', ') || 'Team',
+                            tasks: projectData?.tasks || 0,
+                            completedTasks: projectData?.completedTasks || 0,
+                            startDate: projectData?.startDate || new Date().toISOString(),
+                            endDate: projectData?.deadline,
+                            priority: projectData?.priority || 'medium',
+                            assignedMembers: assignedMembers,
+                            teamMembers: projectTeamMembers
+                        };
+                    });
                     setProjects(projectsList);
                 }
                 setLoading(false);
@@ -551,7 +567,7 @@ export default function Projects() {
                                         padding: '8px'
                                     }}
                                 >
-                                    <ListViewIcon />
+                                    <GridViewIcon />
                                 </IconButton>
                             </Box>
                         </Grid>
@@ -735,61 +751,60 @@ export default function Projects() {
                                             </Box>
                                         </Box>
 
-                                        {/* Project Statistics */}
+                                        {/* Team Members Section */}
                                         <Box sx={{ mb: 3 }}>
-                                            <Grid container spacing={2}>
-                                                <Grid item xs={6}>
-                                                    <Box sx={{ 
-                                                        textAlign: 'center', 
-                                                        p: 2, 
-                                                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                                                        borderRadius: 2,
-                                                        border: '1px solid rgba(102, 126, 234, 0.3)',
-                                                        boxShadow: '0 4px 12px rgba(102, 126, 234, 0.2)',
-                                                        transition: 'all 0.3s ease',
-                                                        '&:hover': {
-                                                            transform: 'translateY(-2px)',
-                                                            boxShadow: '0 6px 20px rgba(102, 126, 234, 0.3)'
-                                                        }
-                                                    }}>
-                                                        <Typography variant="h5" color="white" fontWeight="bold">
-                                                            {project.progress}%
-                                                        </Typography>
-                                                        <Typography variant="caption" color="rgba(255, 255, 255, 0.9)" sx={{ fontSize: '0.7rem', fontWeight: 500 }}>
-                                                            Progress
-                                                        </Typography>
+                                            <Typography variant="body2" fontWeight="600" color="white" sx={{ mb: 2 }}>
+                                                Team Members ({project.teamMembers?.length || 0})
+                                            </Typography>
+                                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                                {project.teamMembers?.filter(member => member && member.name).map((member) => (
+                                                    <Box 
+                                                        key={member.id}
+                                                        sx={{ 
+                                                            display: 'flex', 
+                                                            alignItems: 'center', 
+                                                            gap: 1.5,
+                                                            p: 1.5,
+                                                            background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%)',
+                                                            borderRadius: '8px',
+                                                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                                                            transition: 'all 0.2s ease',
+                                                            '&:hover': {
+                                                                background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.06) 100%)',
+                                                                transform: 'translateX(4px)',
+                                                                borderColor: 'rgba(255, 255, 255, 0.2)'
+                                                            }
+                                                        }}
+                                                    >
+                                                        <Avatar 
+                                                            sx={{ 
+                                                                width: 32, 
+                                                                height: 32, 
+                                                                bgcolor: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                                                fontSize: '0.875rem',
+                                                                fontWeight: 'bold'
+                                                            }}
+                                                        >
+                                                            {member.name?.charAt(0)?.toUpperCase() || 'U'}
+                                                        </Avatar>
+                                                        <Box flex={1}>
+                                                            <Typography variant="body2" fontWeight="600" color="white">
+                                                                {member.name || 'Unknown'}
+                                                            </Typography>
+                                                            <Typography variant="caption" color="rgba(255, 255, 255, 0.7)" sx={{ fontSize: '0.75rem' }}>
+                                                                {member.email || 'No email'}
+                                                            </Typography>
+                                                        </Box>
                                                     </Box>
-                                                </Grid>
-                                                <Grid item xs={6}>
-                                                    <Box sx={{ 
-                                                        textAlign: 'center', 
-                                                        p: 2, 
-                                                        background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-                                                        borderRadius: 2,
-                                                        border: '1px solid rgba(245, 87, 108, 0.3)',
-                                                        boxShadow: '0 4px 12px rgba(245, 87, 108, 0.2)',
-                                                        transition: 'all 0.3s ease',
-                                                        '&:hover': {
-                                                            transform: 'translateY(-2px)',
-                                                            boxShadow: '0 6px 20px rgba(245, 87, 108, 0.3)'
-                                                        }
-                                                    }}>
-                                                        <Typography variant="h5" color="white" fontWeight="bold">
-                                                            {project.completedTasks}
-                                                        </Typography>
-                                                        <Typography variant="caption" color="rgba(255, 255, 255, 0.9)" sx={{ fontSize: '0.7rem', fontWeight: 500 }}>
-                                                            Tasks Done
-                                                        </Typography>
-                                                    </Box>
-                                                </Grid>
-                                            </Grid>
+                                                ))}
+                                            </Box>
                                         </Box>
 
-                                        {/* Enhanced Progress Section */}
+                                        {/* Project Progress */}
                                         <Box sx={{ mb: 3 }}>
                                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
                                                 <Typography variant="body2" fontWeight="600" color="white">
-                                                    Overall Progress
+                                                    Project Progress
                                                 </Typography>
                                                 <Typography variant="body2" color="rgba(255, 255, 255, 0.7)" sx={{ fontSize: '0.8rem' }}>
                                                     {project.completedTasks}/{project.tasks} tasks
@@ -1410,6 +1425,7 @@ export default function Projects() {
                     {selectedProjectForTasks && (
                         <TaskAssignment 
                             projectId={selectedProjectForTasks.id}
+                            projectTeamMembers={selectedProjectForTasks.teamMembers}
                             onTaskAssigned={(taskId, assignedTo) => {
                                 console.log(`Task ${taskId} assigned to ${assignedTo}`);
                             }}
@@ -1474,7 +1490,7 @@ export default function Projects() {
                     {selectedProjectForTasks && (
                         <TaskDependencyTracking 
                             projectId={selectedProjectForTasks.id}
-                            onDependencyUpdate={(taskId, dependencies) => {
+                            onDependencyUpdate={(taskId) => {
                                 console.log(`Dependencies updated for task ${taskId}`);
                             }}
                         />

@@ -1,0 +1,408 @@
+{
+  "summary": {
+    "total": 98,
+    "passed": 98,
+    "failed": 0,
+    "warnings": 0,
+    "success_rate": 100.0
+  },
+  "details": {
+    "passed": [
+      {
+        "test": "Firebase Connection",
+        "message": "Successfully connected to Firebase via REST API"
+      },
+      {
+        "test": "Firebase Collections",
+        "message": "Found collections: ['activities', 'adminTodos', 'conversations', 'cursors', 'errors', 'featureFlags', 'members', 'messages', 'notifications', 'performanceMetrics', 'projects', 'sessions', 'systemAnalytics', 'systemHealth', 'tasks', 'team', 'teams', 'userMetrics', 'users']"
+      },
+      {
+        "test": "Collection Check",
+        "message": "Collection 'activities' has 5 items"
+      },
+      {
+        "test": "Collection Check",
+        "message": "Collection 'adminTodos' has 4 items"
+      },
+      {
+        "test": "Collection Check",
+        "message": "Collection 'conversations' has 18 items"
+      },
+      {
+        "test": "Collection Check",
+        "message": "Collection 'cursors' has 4 items"
+      },
+      {
+        "test": "Collection Check",
+        "message": "Collection 'errors' has 75 items"
+      },
+      {
+        "test": "Collection Check",
+        "message": "Collection 'featureFlags' has 1 items"
+      },
+      {
+        "test": "Collection Check",
+        "message": "Collection 'members' exists"
+      },
+      {
+        "test": "Collection Check",
+        "message": "Collection 'messages' has 2 items"
+      },
+      {
+        "test": "Collection Check",
+        "message": "Collection 'notifications' has 11 items"
+      },
+      {
+        "test": "Collection Check",
+        "message": "Collection 'performanceMetrics' has 344 items"
+      },
+      {
+        "test": "Collection Check",
+        "message": "Collection 'projects' has 7 items"
+      },
+      {
+        "test": "Collection Check",
+        "message": "Collection 'sessions' has 5 items"
+      },
+      {
+        "test": "Collection Check",
+        "message": "Collection 'systemAnalytics' has 6 items"
+      },
+      {
+        "test": "Collection Check",
+        "message": "Collection 'systemHealth' has 6 items"
+      },
+      {
+        "test": "Collection Check",
+        "message": "Collection 'tasks' has 1 items"
+      },
+      {
+        "test": "Collection Check",
+        "message": "Collection 'team' exists"
+      },
+      {
+        "test": "Collection Check",
+        "message": "Collection 'teams' has 8 items"
+      },
+      {
+        "test": "Collection Check",
+        "message": "Collection 'userMetrics' has 4 items"
+      },
+      {
+        "test": "Collection Check",
+        "message": "Collection 'users' has 5 items"
+      },
+      {
+        "test": "User Role Check",
+        "message": "User Kamlesh Pawar (kamleshsharadpawar@gmail.com) - Role: admin"
+      },
+      {
+        "test": "User Role Check",
+        "message": "User Monkey D luffy (kamlesh.devium@gmail.com) - Role: manager"
+      },
+      {
+        "test": "User Role Check",
+        "message": "User Admin User (admin@devium.com) - Role: admin"
+      },
+      {
+        "test": "User Role Check",
+        "message": "User Katagiri Uichi (kamleshpawar@gmail.com) - Role: developer"
+      },
+      {
+        "test": "User Role Check",
+        "message": "User Naruto Uzumaki (kamleshpawar.devium@gmail.com) - Role: tester"
+      },
+      {
+        "test": "User Statistics",
+        "message": "Total users: 5"
+      },
+      {
+        "test": "Role Distribution",
+        "message": "Admins: 2"
+      },
+      {
+        "test": "Role Distribution",
+        "message": "Managers: 1"
+      },
+      {
+        "test": "Role Distribution",
+        "message": "Developers: 1"
+      },
+      {
+        "test": "Role Distribution",
+        "message": "Testers: 1"
+      },
+      {
+        "test": "Teams Count",
+        "message": "Found 8 teams"
+      },
+      {
+        "test": "Team Details",
+        "message": "Team 'Devim' has 2 members"
+      },
+      {
+        "test": "Team Details",
+        "message": "Team 'The Hub' has 2 members"
+      },
+      {
+        "test": "Team Details",
+        "message": "Team 'Tomodachi' has 2 members"
+      },
+      {
+        "test": "Team Details",
+        "message": "Team 'tomodachi 2.0' has 2 members"
+      },
+      {
+        "test": "Team Details",
+        "message": "Team 'Hisenberg' has 3 members"
+      },
+      {
+        "test": "Team Details",
+        "message": "Team 'Hisenberg2.0' has 4 members"
+      },
+      {
+        "test": "Team Details",
+        "message": "Team 'Cevix' has 4 members"
+      },
+      {
+        "test": "Team Details",
+        "message": "Team 'Bird' has 3 members"
+      },
+      {
+        "test": "Projects Count",
+        "message": "Found 7 projects"
+      },
+      {
+        "test": "Project Details",
+        "message": "Project 'Devium' - Team: -Ogcfw-rtgFPNGtndALP, Status: planning"
+      },
+      {
+        "test": "Project Assignment",
+        "message": "Project 'Devium' has 2 assigned members"
+      },
+      {
+        "test": "Project Details",
+        "message": "Project 'hisenberg' - Team: -Ogcfw-rtgFPNGtndALP, Status: in-progress"
+      },
+      {
+        "test": "Project Assignment",
+        "message": "Project 'hisenberg' has 2 assigned members"
+      },
+      {
+        "test": "Project Details",
+        "message": "Project 'Hisenberg2.0' - Team: -Ogcfw-rtgFPNGtndALP, Status: planning"
+      },
+      {
+        "test": "Project Assignment",
+        "message": "Project 'Hisenberg2.0' has 2 assigned members"
+      },
+      {
+        "test": "Project Details",
+        "message": "Project 'Wise' - Team: -Ogcfw-rtgFPNGtndALP, Status: planning"
+      },
+      {
+        "test": "Project Assignment",
+        "message": "Project 'Wise' has 2 assigned members"
+      },
+      {
+        "test": "Project Details",
+        "message": "Project 'Hamelton' - Team: -Ogcfw-rtgFPNGtndALP, Status: planning"
+      },
+      {
+        "test": "Project Assignment",
+        "message": "Project 'Hamelton' has 2 assigned members"
+      },
+      {
+        "test": "Project Details",
+        "message": "Project 'Metix' - Team: No team, Status: planning"
+      },
+      {
+        "test": "Project Details",
+        "message": "Project 'Matrix' - Team: No team, Status: planning"
+      },
+      {
+        "test": "Chat Conversations",
+        "message": "Found 18 conversations"
+      },
+      {
+        "test": "Conversation Details",
+        "message": "Conversation 'General Team Chat' - Type: team, Participants: 1"
+      },
+      {
+        "test": "Conversation Details",
+        "message": "Conversation 'General Team Chat' - Type: team, Participants: 1"
+      },
+      {
+        "test": "Conversation Details",
+        "message": "Conversation 'Project Discussion' - Type: project, Participants: 1"
+      },
+      {
+        "test": "Conversation Details",
+        "message": "Conversation 'Project Discussion' - Type: project, Participants: 1"
+      },
+      {
+        "test": "Conversation Details",
+        "message": "Conversation 'General Team Chat' - Type: team, Participants: 1"
+      },
+      {
+        "test": "Conversation Details",
+        "message": "Conversation 'Project Discussion' - Type: project, Participants: 1"
+      },
+      {
+        "test": "Message Count",
+        "message": "Conversation 'Project Discussion' has 1 messages"
+      },
+      {
+        "test": "Conversation Details",
+        "message": "Conversation 'Project: Devium' - Type: project, Participants: 4"
+      },
+      {
+        "test": "Conversation Details",
+        "message": "Conversation 'Project: hisenberg' - Type: project, Participants: 4"
+      },
+      {
+        "test": "Conversation Details",
+        "message": "Conversation 'Project: Hisenberg2.0' - Type: project, Participants: 4"
+      },
+      {
+        "test": "Conversation Details",
+        "message": "Conversation 'Project: Wise' - Type: project, Participants: 4"
+      },
+      {
+        "test": "Conversation Details",
+        "message": "Conversation 'Project: Hamelton' - Type: project, Participants: 4"
+      },
+      {
+        "test": "Message Count",
+        "message": "Conversation 'Project: Hamelton' has 2 messages"
+      },
+      {
+        "test": "Conversation Details",
+        "message": "Conversation 'General Team Chat' - Type: team, Participants: 1"
+      },
+      {
+        "test": "Conversation Details",
+        "message": "Conversation 'Project: Devium' - Type: project, Participants: 4"
+      },
+      {
+        "test": "Conversation Details",
+        "message": "Conversation 'Project: hisenberg' - Type: project, Participants: 4"
+      },
+      {
+        "test": "Conversation Details",
+        "message": "Conversation 'Project: Hisenberg2.0' - Type: project, Participants: 4"
+      },
+      {
+        "test": "Conversation Details",
+        "message": "Conversation 'Project: Wise' - Type: project, Participants: 4"
+      },
+      {
+        "test": "Conversation Details",
+        "message": "Conversation 'Project: Hamelton' - Type: project, Participants: 4"
+      },
+      {
+        "test": "Conversation Details",
+        "message": "Conversation 'General Team Chat' - Type: team, Participants: 1"
+      },
+      {
+        "test": "User Presence",
+        "message": "Users online: 3"
+      },
+      {
+        "test": "Dependencies",
+        "message": "Found 16 production dependencies"
+      },
+      {
+        "test": "Dev Dependencies",
+        "message": "Found 5 development dependencies"
+      },
+      {
+        "test": "Critical Dependencies",
+        "message": "Critical dependency react: ^18.2.0"
+      },
+      {
+        "test": "Critical Dependencies",
+        "message": "Critical dependency firebase: ^10.4.0"
+      },
+      {
+        "test": "Critical Dependencies",
+        "message": "Critical dependency @mui/material: ^5.11.15"
+      },
+      {
+        "test": "Critical Dependencies",
+        "message": "Critical dependency react-router-dom: ^6.15.0"
+      },
+      {
+        "test": "Critical Dependencies",
+        "message": "Critical dependency notistack: ^3.0.2"
+      },
+      {
+        "test": "File Structure",
+        "message": "File exists: src/App.tsx"
+      },
+      {
+        "test": "File Structure",
+        "message": "File exists: src/firebase.ts"
+      },
+      {
+        "test": "File Structure",
+        "message": "File exists: src/contexts/AuthContext.tsx"
+      },
+      {
+        "test": "File Structure",
+        "message": "File exists: src/contexts/ChatContext.tsx"
+      },
+      {
+        "test": "File Structure",
+        "message": "File exists: src/services/firebaseChatService.ts"
+      },
+      {
+        "test": "File Structure",
+        "message": "File exists: package.json"
+      },
+      {
+        "test": "File Structure",
+        "message": "File exists: .env"
+      },
+      {
+        "test": "Routing Configuration",
+        "message": "ProtectedRoute component found"
+      },
+      {
+        "test": "Routing Configuration",
+        "message": "Role-based access control implemented"
+      },
+      {
+        "test": "Role Routes",
+        "message": "Role routes found for: admin, manager, developer, tester"
+      },
+      {
+        "test": "Chat Service Methods",
+        "message": "Method createConversation found in chat service"
+      },
+      {
+        "test": "Chat Service Methods",
+        "message": "Method sendMessage found in chat service"
+      },
+      {
+        "test": "Chat Service Methods",
+        "message": "Method subscribeToConversations found in chat service"
+      },
+      {
+        "test": "Chat Service Methods",
+        "message": "Method subscribeToMessages found in chat service"
+      },
+      {
+        "test": "Chat Service Methods",
+        "message": "Method updateUserOnlineStatus found in chat service"
+      },
+      {
+        "test": "Chat Service Imports",
+        "message": "Firebase database imports found"
+      }
+    ],
+    "failed": [],
+    "warnings": [],
+    "timestamp": "2025-12-17T16:38:29.185606"
+  }
+}
